@@ -37,10 +37,9 @@ digit [0-9]
 nonzero [1-9]
 underscore _
 character [a-zA-Z_$]
-exponencial ([eE][+-])
 digitseq {digit}({digit}|{underscore})*{digit}|{digit}
-%X COMMENT
-%X STRING
+%x COMMENT
+%x STRING
 %%
 
 
@@ -163,8 +162,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 "}" { print_simple_token("RBRACE"); column += yyleng; }
 "[" { print_simple_token("LSQ"); column += yyleng; }
 "]" { print_simple_token("RSQ"); column += yyleng; }
-"++" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"--" { print_valued_token("RESERVED", yytext); column += yyleng; }
+
 
 
 
@@ -184,7 +182,8 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 "void" { print_simple_token("VOID"); column += yyleng; }
 "while" { print_simple_token("WHILE"); column += yyleng; }
 
-
+"++" { print_valued_token("RESERVED", yytext); column += yyleng; }
+"--" { print_valued_token("RESERVED", yytext); column += yyleng; }
 "null" { print_valued_token("RESERVED", yytext); column += yyleng; }
 "Integer" { print_valued_token("RESERVED", yytext); column += yyleng; }
 "System" { print_valued_token("RESERVED", yytext); column += yyleng; }
