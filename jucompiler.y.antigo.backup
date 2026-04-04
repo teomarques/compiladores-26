@@ -13,27 +13,18 @@ struct node *ast;
 
 %}
 
-%union{
-    char *lexeme;
-    struct node *node;
-}
-
-/* Tokens devolvidos pelo lexer (jucompiler.l). */
-%token BOOL CLASS DOTLENGTH DOUBLE ELSE IF INT PRINT PARSEINT PUBLIC RETURN STATIC STRING VOID WHILE
-%token EQ NE GE LE LSHIFT RSHIFT ARROW AND OR GT LT ASSIGN NOT
-%token PLUS MINUS STAR DIV MOD XOR
-%token COMMA SEMICOLON LPAR RPAR LBRACE RBRACE LSQ RSQ
-
-/* Tokens herdados do exemplo "petit" (podem ser removidos quando substituíres a gramática). */
-%token INTEGER THEN
-
-%token<lexeme> IDENTIFIER NATURAL DECIMAL STRLIT BOOLLIT RESERVED
-
+%token INTEGER DOUBLE IF THEN ELSE
+%token<lexeme> IDENTIFIER NATURAL DECIMAL
 %type<node> program functions function parameters parameter arguments expression
 
 %left LOW
 %left '+' '-'
 %left '*' '/'
+
+%union{
+    char *lexeme;
+    struct node *node;
+}
 
 /* START grammar rules section -- BNF grammar */
 
@@ -143,14 +134,3 @@ void show(struct node *node, int depth) {
 }
 
 // all needed functions are collected in the .l and ast.* files
-
-extern int syn_line;
-extern int syn_column;
-extern char *yytext;
-
-void yyerror(char *msg) {
-    /* Formato pedido na meta2 (aproximação mínima enquanto a gramática é substituída):
-       Line X, col Y: syntax error: <token> */
-    if (yytext == NULL) yytext = "";
-    printf("Line %d, col %d: %s: %s\n", syn_line, syn_column, msg, yytext);
-}

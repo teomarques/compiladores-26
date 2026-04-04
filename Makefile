@@ -1,16 +1,13 @@
-CC = cc
-CFLAGS = -Wall -Wno-unused-function
-
-all: jucompiler
-
-jucompiler: y.tab.c lex.yy.c ast.c
-	$(CC) -o jucompiler lex.yy.c y.tab.c ast.c $(CFLAGS)
-
-y.tab.c y.tab.h: jucompiler.y
+all:
+	rm -f jucompiler  y.tab.c y.tab.h
 	yacc -d -v -t -g --report=all jucompiler.y
-
-lex.yy.c: jucompiler.l y.tab.h
 	lex jucompiler.l
+	cc -o jucompiler lex.yy.c y.tab.c ast.c -Wall -Wno-unused-function -lfl
+
+run: all
+	./jucompiler
 
 clean:
-	rm -f jucompiler lex.yy.c y.tab.c y.tab.h y.output
+	rm -f jucompiler lex.yy.c y.tab.c y.tab.h y.output y.gv
+
+.PHONY: all run clean
