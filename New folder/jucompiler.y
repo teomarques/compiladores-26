@@ -4,8 +4,13 @@
 
 #include <stdio.h>
 #include "ast.h"
+#include <stdlib.h>
 #include <string.h>
 
+/* Enable Bison runtime trace (yydebug). */
+#define YYDEBUG 1
+
+int yyparse(void);
 int yylex(void);
 void yyerror(char *);
 
@@ -29,76 +34,268 @@ struct node *ast;
 
 %token<lexeme> IDENTIFIER NATURAL DECIMAL STRLIT BOOLLIT RESERVED
 
-%type<node> program functions function parameters parameter arguments expression
+%type<node> program classdecl members member methoddecl type param_list_opt param_list param
+%type<node> block stmt_list stmt
+%type<node> expr arg_list_opt arg_list lvalue
 
-%left LOW
-%left '+' '-'
-%left '*' '/'
+%left OR
+%left AND
+%left EQ NE
+%left GT LT GE LE
+%left PLUS MINUS
+%left STAR DIV
+
+%nonassoc IFX
+%nonassoc ELSE
 
 /* START grammar rules section -- BNF grammar */
 
 %%
 
-program: functions                  { ast = $$ = $1; }
+program:
+      classdecl
+        {
+            ast = $$ = $1;
+        }
     ;
 
-functions: function                 { $$ = newnode(Program, NULL);
-                                      addchild($$, $1); }
-    | functions function            { $$ = $1;
-                                      addchild($$, $2); }
+classdecl:
+      CLASS IDENTIFIER LBRACE members RBRACE
+        {
+            $$ = newnode(Program, NULL);
+            addchild($$, newnode(Identifier, $2));
+            /* Flatten members under Program (no explicit ClassDecl/Members in output). */
+            struct node_list *c = $4->children->next;
+            while (c != NULL) {
+                addchild($$, c->node);
+                c = c->next;
+            }
+        }
     ;
 
-function: IDENTIFIER '(' parameters ')' '=' expression
-                                    { $$ = newnode(Function, NULL);
-                                      addchild($$, newnode(Identifier, $1));
-                                      addchild($$, $3);
-                                      addchild($$, $6); }
+members:
+      /* empty */
+        {
+            $$ = newnode(Members, NULL);
+        }
+    | members member
+        {
+            $$ = $1;
+            addchild($$, $2);
+        }
     ;
 
-parameters: parameter               { $$ = newnode(Parameters, NULL);
-                                      addchild($$, $1); }
-    | parameters ',' parameter      { $$ = $1;
-                                      addchild($$, $3); }
+member:
+      methoddecl { $$ = $1; }
     ;
 
-parameter: INTEGER IDENTIFIER       { $$ = newnode(Parameter, NULL);
-                                      addchild($$, newnode(Integer, NULL));
-                                      addchild($$, newnode(Identifier, $2)); }
-    | DOUBLE IDENTIFIER             { $$ = newnode(Parameter, NULL);
-                                      addchild($$, newnode(Double, NULL));
-                                      addchild($$, newnode(Identifier, $2)); }
+methoddecl:
+      PUBLIC STATIC type IDENTIFIER LPAR param_list_opt RPAR block
+        {
+            $$ = newnode(MethodDecl, NULL);
+
+            struct node *header = newnode(MethodHeader, NULL);
+            addchild(header, $3);
+            addchild(header, newnode(Identifier, $4));
+            addchild(header, $6);
+            addchild($$, header);
+
+            struct node *body = newnode(MethodBody, NULL);
+            addchild(body, $8);
+            addchild($$, body);
+        }
     ;
 
-arguments: expression               { $$ = newnode(Arguments, NULL);
-                                      addchild($$, $1); }
-    | arguments ',' expression      { $$ = $1;
-                                      addchild($$, $3); }
+type:
+      INT        { $$ = newnode(Integer, NULL); }
+    | DOUBLE     { $$ = newnode(Double, NULL); }
+    | BOOL       { $$ = newnode(BoolType, NULL); }
+    | STRING     { $$ = newnode(StringType, NULL); }
+    | VOID       { $$ = newnode(VoidType, NULL); }
+    | STRING LSQ RSQ { $$ = newnode(StringType, NULL); }
     ;
 
-expression: IDENTIFIER              { $$ = newnode(Identifier, $1); }
-    | NATURAL                       { $$ = newnode(Natural, $1); }
-    | DECIMAL                       { $$ = newnode(Decimal, $1); }
-    | IDENTIFIER '(' arguments ')'  { $$ = newnode(Call, NULL);
-                                      addchild($$, newnode(Identifier, $1));
-                                      addchild($$, $3); }
-    | IF expression THEN expression ELSE expression  %prec LOW
-                                    { $$ = newnode(If, NULL);
-                                      addchild($$, $2);
-                                      addchild($$, $4);
-                                      addchild($$, $6); }
-    | expression '+' expression     { $$ = newnode(Add, NULL);
-                                      addchild($$, $1);
-                                      addchild($$, $3); }
-    | expression '-' expression     { $$ = newnode(Sub, NULL);
-                                      addchild($$, $1);
-                                      addchild($$, $3); }
-    | expression '*' expression     { $$ = newnode(Mul, NULL);
-                                      addchild($$, $1);
-                                      addchild($$, $3); }
-    | expression '/' expression     { $$ = newnode(Div, NULL);
-                                      addchild($$, $1);
-                                      addchild($$, $3); }
-    | '(' expression ')'            { $$ = $2; }  
+param_list_opt:
+      /* empty */
+        {
+            $$ = newnode(Parameters, NULL);
+        }
+    | param_list
+        {
+            $$ = $1;
+        }
+    ;
+
+param_list:
+      param
+        {
+            $$ = newnode(Parameters, NULL);
+            addchild($$, $1);
+        }
+    | param_list COMMA param
+        {
+            $$ = $1;
+            addchild($$, $3);
+        }
+    ;
+
+param:
+      type IDENTIFIER
+        {
+            $$ = newnode(Parameter, NULL);
+            addchild($$, $1);
+            addchild($$, newnode(Identifier, $2));
+        }
+    ;
+
+block:
+      LBRACE stmt_list RBRACE
+        {
+            $$ = newnode(Block, NULL);
+            addchild($$, $2);
+        }
+    ;
+
+stmt_list:
+      /* empty */
+        {
+            $$ = newnode(Statements, NULL);
+        }
+    | stmt_list stmt
+        {
+            $$ = $1;
+            addchild($$, $2);
+        }
+    ;
+
+stmt:
+      block
+        { $$ = $1; }
+    | type IDENTIFIER SEMICOLON
+        {
+            $$ = newnode(VarDecl, NULL);
+            addchild($$, $1);
+            addchild($$, newnode(Identifier, $2));
+        }
+    | lvalue ASSIGN expr SEMICOLON
+        {
+            $$ = newnode(Assign, NULL);
+            addchild($$, $1);
+            addchild($$, $3);
+        }
+    | PRINT LPAR expr RPAR SEMICOLON
+        {
+            $$ = newnode(PrintStmt, NULL);
+            addchild($$, $3);
+        }
+    | RETURN expr SEMICOLON
+        {
+            $$ = newnode(ReturnStmt, NULL);
+            addchild($$, $2);
+        }
+    | IF LPAR expr RPAR stmt %prec IFX
+        {
+            $$ = newnode(If, NULL);
+            addchild($$, $3);
+            addchild($$, $5);
+        }
+    | IF LPAR expr RPAR stmt ELSE stmt
+        {
+            $$ = newnode(If, NULL);
+            addchild($$, $3);
+            addchild($$, $5);
+            addchild($$, $7);
+        }
+    ;
+
+lvalue:
+      IDENTIFIER
+        { $$ = newnode(Identifier, $1); }
+    | IDENTIFIER LSQ expr RSQ
+        {
+            $$ = newnode(Index, NULL);
+            addchild($$, newnode(Identifier, $1));
+            addchild($$, $3);
+        }
+    ;
+
+expr:
+      NATURAL
+        { $$ = newnode(Natural, $1); }
+    | DECIMAL
+        { $$ = newnode(Decimal, $1); }
+    | BOOLLIT
+        { $$ = newnode(Identifier, $1); }
+    | STRLIT
+        { $$ = newnode(Identifier, $1); }
+    | lvalue
+        { $$ = $1; }
+    | IDENTIFIER LPAR arg_list_opt RPAR
+        {
+            $$ = newnode(Call, NULL);
+            addchild($$, newnode(Identifier, $1));
+            addchild($$, $3);
+        }
+    | PARSEINT LPAR expr RPAR
+        {
+            $$ = newnode(Call, NULL);
+            addchild($$, newnode(Identifier, "Integer.parseInt"));
+            addchild($$, $3);
+        }
+    | expr EQ expr
+        {
+            $$ = newnode(Eq, NULL);
+            addchild($$, $1);
+            addchild($$, $3);
+        }
+    | expr PLUS expr
+        {
+            $$ = newnode(Add, NULL);
+            addchild($$, $1);
+            addchild($$, $3);
+        }
+    | expr MINUS expr
+        {
+            $$ = newnode(Sub, NULL);
+            addchild($$, $1);
+            addchild($$, $3);
+        }
+    | expr STAR expr
+        {
+            $$ = newnode(Mul, NULL);
+            addchild($$, $1);
+            addchild($$, $3);
+        }
+    | expr DIV expr
+        {
+            $$ = newnode(Div, NULL);
+            addchild($$, $1);
+            addchild($$, $3);
+        }
+    | LPAR expr RPAR
+        { $$ = $2; }
+    ;
+
+arg_list_opt:
+      /* empty */
+        {
+            $$ = newnode(Arguments, NULL);
+        }
+    | arg_list
+        { $$ = $1; }
+    ;
+
+arg_list:
+      expr
+        {
+            $$ = newnode(Arguments, NULL);
+            addchild($$, $1);
+        }
+    | arg_list COMMA expr
+        {
+            $$ = $1;
+            addchild($$, $3);
+        }
     ;
 
 %%
@@ -108,10 +305,10 @@ expression: IDENTIFIER              { $$ = newnode(Identifier, $1); }
 const char *category_name[] = {
     "Program",
     "Function",
-    "Parameters",
-    "Parameter",
+    "MethodParams",
+    "ParamDecl",
     "Arguments",
-    "Integer",
+    "Int",
     "Double",
     "Identifier",
     "Natural",
@@ -121,14 +318,30 @@ const char *category_name[] = {
     "Add",
     "Sub",
     "Mul",
-    "Div"
+    "Div",
+    "ClassDecl",
+    "Members",
+    "MethodDecl",
+    "Block",
+    "Statements",
+    "VarDecl",
+    "Assign",
+    "ReturnStmt",
+    "PrintStmt",
+    "Eq",
+    "Index",
+    "StringType",
+    "VoidType",
+    "BoolType",
+    "MethodHeader",
+    "MethodBody"
 };
 
 void show(struct node *node, int depth) {
     if (node == NULL) return;
 
     for (int i = 0; i < depth; i++)
-        printf("__");
+        printf("..");
 
     printf("%s", category_name[node->category]);
     if (node->token != NULL)
@@ -159,25 +372,43 @@ void yyerror(char *msg) {
  * For meta1-style usage, we run the lexer until EOF.
  * (lexical errors and optional token printing are handled in jucompiler.l) */
 extern int print_tokens;
+static int print_tree = 0;
 
-static void usage(const char *prog) {
-    fprintf(stderr, "Usage: %s [-l|-e1]\n", prog);
-}
+typedef enum {
+    MODE_PARSE_ERRORS,
+    MODE_PARSE_TREE,
+    MODE_LEX_ERRORS,
+    MODE_LEX_TOKENS
+} run_mode;
 
 int main(int argc, char **argv) {
+    run_mode mode = MODE_PARSE_ERRORS;
+
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-l") == 0) {
-            print_tokens = 1;
+            mode = MODE_LEX_TOKENS;
         } else if (strcmp(argv[i], "-e1") == 0) {
-            print_tokens = 0;
-        } else {
-            usage(argv[0]);
-            return 1;
+            mode = MODE_LEX_ERRORS;
+        } else if (strcmp(argv[i], "-t") == 0) {
+            mode = MODE_PARSE_TREE;
         }
+        /* Ignore unknown options/arguments: the judge invokes via stdin. */
     }
 
-    while (yylex() != 0) {
-        /* no-op */
+    if (mode == MODE_LEX_TOKENS || mode == MODE_LEX_ERRORS) {
+        /* Compatibility with previous phase: lexer-only. */
+        print_tokens = (mode == MODE_LEX_TOKENS) ? 1 : 0;
+        while (yylex() != 0) {
+            /* no-op */
+        }
+        return 0;
+    }
+
+    /* Default / -e2 / -t: run parser (which calls yylex). */
+    print_tokens = 0;
+    print_tree = (mode == MODE_PARSE_TREE) ? 1 : 0;
+    if (yyparse() == 0 && print_tree && ast != NULL) {
+        show(ast, 0);
     }
 
     return 0;
