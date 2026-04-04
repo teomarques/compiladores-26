@@ -1,34 +1,54 @@
-/* 
+/*
  * Autores:
  * Simão Tomás Botas Carvalho - 2021223055
  * Teodoro Marques - 2023211717
  */
 
 %{
-   #include <stdio.h>
-   #include <string.h>
-   int line = 1;
-   int column = 1;
-   int print_tokens = 0;
-   int comment_start_line = 1;
-   int comment_start_col = 1;
-   int string_start_line = 1;
-   int string_start_col = 1;
-   char string_buffer[10000];
-   int buffer_pos = 0;
-    int string_has_error = 0;
-   
-   void print_simple_token(const char *token) {
-       if (print_tokens) {
-           printf("%s\r\n", token);
-       }
-   }
-   
-   void print_valued_token(const char *token, const char *value) {
-       if (print_tokens) {
-           printf("%s(%s)\r\n", token, value);
-       }
-   }
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+/* Header gerado por yacc/bison a partir do jucompiler.y.
+ * (o teu Makefile deve gerar y.tab.h) */
+#include "y.tab.h"
+
+/* Executado antes de cada ação do lexer:
+ * guarda a posição inicial do token em syn_* e avança a coluna. */
+#define YY_USER_ACTION { syn_line = lex_line; syn_column = lex_column; lex_column += yyleng; }
+
+/* Para tokens com valor (IDENTIFIER, NATURAL, DECIMAL, BOOLLIT, STRLIT, etc.)
+ * assume-se que o %union no yacc tem o campo 'lexeme'. */
+#define PASS_TOKEN() yylval.lexeme = strdup(yytext)
+
+int lex_line = 1;
+int lex_column = 1;
+int syn_line = -1;
+int syn_column = -1;
+
+int print_tokens = 0;
+
+int comment_start_line = 1;
+int comment_start_col = 1;
+int string_start_line = 1;
+int string_start_col = 1;
+char string_buffer[10000];
+int buffer_pos = 0;
+int string_has_error = 0;
+
+static void print_simple_token(const char *token) {
+    if (print_tokens) {
+        printf("%s\n", token);
+    }
+}
+
+static void print_valued_token(const char *token, const char *value) {
+    if (print_tokens) {
+        printf("%s(%s)\n", token, value);
+    }
+}
+
 %}
 
 %option noyywrap
@@ -38,220 +58,203 @@ nonzero [1-9]
 underscore _
 character [a-zA-Z_$]
 digitseq {digit}({digit}|{underscore})*{digit}|{digit}
-%x COMMENT
-%x STRING
+%X COMMENT
+%X STRING
 %%
 
 
-"/*" { BEGIN(COMMENT); comment_start_line = line; comment_start_col = column; column += 2; }
+"/*" { comment_start_line = syn_line; comment_start_col = syn_column; BEGIN(COMMENT); }
 
-<COMMENT>"*/" { BEGIN(INITIAL); column += 2; }
-<COMMENT>\r\n { line++; column = 1; }
-<COMMENT>\n { line++; column = 1; }
-<COMMENT>\r { line++; column = 1; }
-<COMMENT>[^*/\r\n]+ { column += yyleng; }
-<COMMENT>[*/] { column++; }
-<COMMENT><<EOF>> { printf("Line %d, col %d: unterminated comment\r\n", comment_start_line, comment_start_col); yyterminate(); }
+<COMMENT>"*/" { BEGIN(INITIAL); }
+<COMMENT>\r\n { lex_line++; lex_column = 1; }
+<COMMENT>\n { lex_line++; lex_column = 1; }
+<COMMENT>\r { lex_line++; lex_column = 1; }
+<COMMENT>[^*/\r\n]+ { ; }
+<COMMENT>[*/] { ; }
+<COMMENT><<EOF>> { printf("Line %d, col %d: unterminated comment\n", comment_start_line, comment_start_col); yyterminate(); }
 
-"//"[^\r\n]* { column += yyleng;}
+"//"[^\r\n]* { ; }
 
-"\"" { BEGIN(STRING); string_start_line = line; string_start_col = column; buffer_pos = 0; string_has_error = 0; column++;}
+"\"" { BEGIN(STRING); string_start_line = syn_line; string_start_col = syn_column; buffer_pos = 0; string_has_error = 0; }
 
-<STRING>\" { 
+<STRING>\" {
     string_buffer[buffer_pos] = '\0';
-    if (print_tokens && !string_has_error) printf("STRLIT(\"%s\")\r\n", string_buffer);
+    if (print_tokens && !string_has_error) printf("STRLIT(\"%s\")\n", string_buffer);
+    yylval.lexeme = strdup(string_buffer);
     BEGIN(INITIAL);
-    column++;
+    return STRLIT;
 }
 
 <STRING>\\[fnrt\\"] { 
     string_buffer[buffer_pos++] = '\\';
     string_buffer[buffer_pos++] = yytext[1];
-    column += yyleng;
 }
 
 <STRING>\\\r\n {
-    printf("Line %d, col %d: invalid escape sequence (\\)\r\n", line, column);
-    printf("Line %d, col %d: unterminated string literal\r\n", string_start_line, string_start_col);
-    line++;
-    column = 1;
+    printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
+    printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_line++;
+    lex_column = 1;
     BEGIN(INITIAL);
 }
 
 <STRING>\\\n {
-    printf("Line %d, col %d: invalid escape sequence (\\)\r\n", line, column);
-    printf("Line %d, col %d: unterminated string literal\r\n", string_start_line, string_start_col);
-    line++;
-    column = 1;
+    printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
+    printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_line++;
+    lex_column = 1;
     BEGIN(INITIAL);
 }
 
 <STRING>\\\r {
-    printf("Line %d, col %d: invalid escape sequence (\\)\r\n", line, column);
-    printf("Line %d, col %d: unterminated string literal\r\n", string_start_line, string_start_col);
-    line++;
-    column = 1;
+    printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
+    printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_line++;
+    lex_column = 1;
     BEGIN(INITIAL);
 }
 
 <STRING>\\. { 
-    printf("Line %d, col %d: invalid escape sequence (%s)\r\n", line, column, yytext);
+    printf("Line %d, col %d: invalid escape sequence (%s)\n", syn_line, syn_column, yytext);
     string_has_error = 1;
-    column += yyleng;
 }
 
 <STRING>\r\n {
-    printf("Line %d, col %d: unterminated string literal\r\n", string_start_line, string_start_col);
-    line++;
-    column = 1;
+    printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_line++;
+    lex_column = 1;
     BEGIN(INITIAL);
 }
 
 <STRING>[\n\r] { 
-    printf("Line %d, col %d: unterminated string literal\r\n", string_start_line, string_start_col);
-    line++;
-    column = 1;
+    printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_line++;
+    lex_column = 1;
     BEGIN(INITIAL);
 }
 
 <STRING><<EOF>> { 
-    printf("Line %d, col %d: unterminated string literal\r\n", string_start_line, string_start_col);
+    printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
     yyterminate();
 }
 
 <STRING>. {
     string_buffer[buffer_pos++] = yytext[0];
-    column++;
 }
 
 
-[ ] {column++; }
-\f  {column += yyleng; }
-\t  {column += yyleng; }
+[ ] { ; }
+\f  { ; }
+	  { ; }
 
-\r\n { line++; column = 1;}
-\n   { line++; column = 1;}
-\r   { line++; column = 1;}
-
-
-"true"|"false" { print_valued_token("BOOLLIT", yytext); column += yyleng; }
-"==" { print_simple_token("EQ"); column += yyleng; }
-"!=" { print_simple_token("NE"); column += yyleng; }
-">=" { print_simple_token("GE"); column += yyleng; }
-"<=" { print_simple_token("LE"); column += yyleng; }
-"<<" { print_simple_token("LSHIFT"); column += yyleng; }
-">>" { print_simple_token("RSHIFT"); column += yyleng; }
-"->" { print_simple_token("ARROW"); column += yyleng; }
-"&&" { print_simple_token("AND"); column += yyleng; }
-"||" { print_simple_token("OR"); column += yyleng; }
-">" { print_simple_token("GT"); column += yyleng; }
-"<" { print_simple_token("LT"); column += yyleng; }
-"=" { print_simple_token("ASSIGN"); column += yyleng; }
-"!" { print_simple_token("NOT"); column += yyleng; }
-"+" { print_simple_token("PLUS"); column += yyleng; }
-"-" { print_simple_token("MINUS"); column += yyleng; }
-"*" { print_simple_token("STAR"); column += yyleng; }
-"/" { print_simple_token("DIV"); column += yyleng; }
-"%" { print_simple_token("MOD"); column += yyleng; }
-"^" { print_simple_token("XOR"); column += yyleng; }
-"," { print_simple_token("COMMA"); column += yyleng; }
-";" { print_simple_token("SEMICOLON"); column += yyleng; }
-"(" { print_simple_token("LPAR"); column += yyleng; }
-")" { print_simple_token("RPAR"); column += yyleng; }
-"{" { print_simple_token("LBRACE"); column += yyleng; }
-"}" { print_simple_token("RBRACE"); column += yyleng; }
-"[" { print_simple_token("LSQ"); column += yyleng; }
-"]" { print_simple_token("RSQ"); column += yyleng; }
+\r\n { lex_line++; lex_column = 1; }
+\n   { lex_line++; lex_column = 1; }
+\r   { lex_line++; lex_column = 1; }
 
 
-
-
-"boolean" { print_simple_token("BOOL"); column += yyleng; }
-"class" { print_simple_token("CLASS"); column += yyleng; }
-".length" { print_simple_token("DOTLENGTH"); column += yyleng; }
-"double" { print_simple_token("DOUBLE"); column += yyleng; }
-"else" { print_simple_token("ELSE"); column += yyleng; }
-"if" { print_simple_token("IF"); column += yyleng; }
-"int" { print_simple_token("INT"); column += yyleng; }
-"System.out.print" { print_simple_token("PRINT"); column += yyleng; }
-"Integer.parseInt" { print_simple_token("PARSEINT"); column += yyleng; }
-"public" { print_simple_token("PUBLIC"); column += yyleng; }
-"return" { print_simple_token("RETURN"); column += yyleng; }
-"static" { print_simple_token("STATIC"); column += yyleng; }
-"String" { print_simple_token("STRING"); column += yyleng; }
-"void" { print_simple_token("VOID"); column += yyleng; }
-"while" { print_simple_token("WHILE"); column += yyleng; }
-
-"++" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"--" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"null" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"Integer" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"System" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"abstract" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"assert" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"break" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"byte" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"case" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"catch" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"char" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"const" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"continue" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"default" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"do" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"enum" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"extends" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"final" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"finally" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"float" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"for" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"goto" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"implements" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"import" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"instanceof" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"interface" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"long" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"native" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"new" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"package" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"private" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"protected" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"short" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"strictfp" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"super" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"switch" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"synchronized" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"this" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"throw" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"throws" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"transient" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"try" { print_valued_token("RESERVED", yytext); column += yyleng; }
-"volatile" { print_valued_token("RESERVED", yytext); column += yyleng; }
+"true"|"false" { PASS_TOKEN(); print_valued_token("BOOLLIT", yytext); return BOOLLIT; }
+"==" { print_simple_token("EQ"); return EQ; }
+"!=" { print_simple_token("NE"); return NE; }
+">=" { print_simple_token("GE"); return GE; }
+"<=" { print_simple_token("LE"); return LE; }
+"<<" { print_simple_token("LSHIFT"); return LSHIFT; }
+">>" { print_simple_token("RSHIFT"); return RSHIFT; }
+"->" { print_simple_token("ARROW"); return ARROW; }
+"&&" { print_simple_token("AND"); return AND; }
+"||" { print_simple_token("OR"); return OR; }
+">" { print_simple_token("GT"); return GT; }
+"<" { print_simple_token("LT"); return LT; }
+"=" { print_simple_token("ASSIGN"); return ASSIGN; }
+"!" { print_simple_token("NOT"); return NOT; }
+"+" { print_simple_token("PLUS"); return PLUS; }
+"-" { print_simple_token("MINUS"); return MINUS; }
+"*" { print_simple_token("STAR"); return STAR; }
+"/" { print_simple_token("DIV"); return DIV; }
+"%" { print_simple_token("MOD"); return MOD; }
+"^" { print_simple_token("XOR"); return XOR; }
+"," { print_simple_token("COMMA"); return COMMA; }
+";" { print_simple_token("SEMICOLON"); return SEMICOLON; }
+"(" { print_simple_token("LPAR"); return LPAR; }
+")" { print_simple_token("RPAR"); return RPAR; }
+"{" { print_simple_token("LBRACE"); return LBRACE; }
+"}" { print_simple_token("RBRACE"); return RBRACE; }
+"[" { print_simple_token("LSQ"); return LSQ; }
+"]" { print_simple_token("RSQ"); return RSQ; }
 
 
 
+"boolean" { print_simple_token("BOOL"); return BOOL; }
+"class" { print_simple_token("CLASS"); return CLASS; }
+".length" { print_simple_token("DOTLENGTH"); return DOTLENGTH; }
+"double" { print_simple_token("DOUBLE"); return DOUBLE; }
+"else" { print_simple_token("ELSE"); return ELSE; }
+"if" { print_simple_token("IF"); return IF; }
+"int" { print_simple_token("INT"); return INT; }
+"System.out.print" { print_simple_token("PRINT"); return PRINT; }
+"Integer.parseInt" { print_simple_token("PARSEINT"); return PARSEINT; }
+"public" { print_simple_token("PUBLIC"); return PUBLIC; }
+"return" { print_simple_token("RETURN"); return RETURN; }
+"static" { print_simple_token("STATIC"); return STATIC; }
+"String" { print_simple_token("STRING"); return STRING; }
+"void" { print_simple_token("VOID"); return VOID; }
+"while" { print_simple_token("WHILE"); return WHILE; }
 
-{digitseq}[eE][+-]?{digitseq} { print_valued_token("DECIMAL", yytext); column += yyleng; }
-{digitseq}?"."{digitseq}([eE][+-]?{digitseq})? { print_valued_token("DECIMAL", yytext); column += yyleng; }
-{digitseq}"."([eE][+-]?{digitseq})? { print_valued_token("DECIMAL", yytext); column += yyleng; }
+"++" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"--" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"null" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"Integer" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"System" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"abstract" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"assert" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"break" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"byte" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"case" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"catch" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"char" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"const" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"continue" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"default" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"do" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"enum" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"extends" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"final" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"finally" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"float" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"for" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"goto" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"implements" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"import" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"instanceof" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"interface" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"long" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"native" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"new" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"package" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"private" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"protected" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"short" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"strictfp" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"super" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"switch" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"synchronized" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"this" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"throw" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"throws" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"transient" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"try" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
+"volatile" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
 
-{character}+({digit}|{character})* { print_valued_token("IDENTIFIER", yytext); column += yyleng; }
-0|{nonzero}({digit}|{underscore})*{digit}|{nonzero} { print_valued_token("NATURAL", yytext); column += yyleng; }
 
+{digitseq}[eE][+-]?{digitseq} { PASS_TOKEN(); print_valued_token("DECIMAL", yytext); return DECIMAL; }
+{digitseq}?"."{digitseq}([eE][+-]?{digitseq})? { PASS_TOKEN(); print_valued_token("DECIMAL", yytext); return DECIMAL; }
+{digitseq}"."([eE][+-]?{digitseq})? { PASS_TOKEN(); print_valued_token("DECIMAL", yytext); return DECIMAL; }
 
-. { printf("Line %d, col %d: illegal character (%s)\r\n", line, column, yytext); column += yyleng; }
+{character}+({digit}|{character})* { PASS_TOKEN(); print_valued_token("IDENTIFIER", yytext); return IDENTIFIER; }
+0|{nonzero}({digit}|{underscore})*{digit}|{nonzero} { PASS_TOKEN(); print_valued_token("NATURAL", yytext); return NATURAL; }
+
+. { printf("Line %d, col %d: illegal character (%s)\n", syn_line, syn_column, yytext); }
+
+<<EOF>> { YY_USER_ACTION; return 0; }
 
 %%
-extern int yylex();
-int main(int argc, char *argv[]) {
-    if (argc > 1) {
-        if (strcmp(argv[1], "-l") == 0) {
-            print_tokens = 1;
-        } else if (strcmp(argv[1], "-e1") == 0) {
-            print_tokens = 0;
-        }
-    } else {
-        print_tokens = 0;
-    }
-    yylex();
-    return 0;
-}
+

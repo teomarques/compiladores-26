@@ -59,7 +59,7 @@ underscore _
 character [a-zA-Z_$]
 digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 %X COMMENT
-%X STRING
+%X STR
 %%
 
 
@@ -75,9 +75,9 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 
 "//"[^\r\n]* { ; }
 
-"\"" { BEGIN(STRING); string_start_line = syn_line; string_start_col = syn_column; buffer_pos = 0; string_has_error = 0; }
+"\"" { BEGIN(STR); string_start_line = syn_line; string_start_col = syn_column; buffer_pos = 0; string_has_error = 0; }
 
-<STRING>\" {
+<STR>\" {
     string_buffer[buffer_pos] = '\0';
     if (print_tokens && !string_has_error) printf("STRLIT(\"%s\")\n", string_buffer);
     yylval.lexeme = strdup(string_buffer);
@@ -85,12 +85,12 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
     return STRLIT;
 }
 
-<STRING>\\[fnrt\\"] { 
+<STR>\\[fnrt\\\"] { 
     string_buffer[buffer_pos++] = '\\';
     string_buffer[buffer_pos++] = yytext[1];
 }
 
-<STRING>\\\r\n {
+<STR>\\\r\n {
     printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
     lex_line++;
@@ -98,7 +98,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
     BEGIN(INITIAL);
 }
 
-<STRING>\\\n {
+<STR>\\\n {
     printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
     lex_line++;
@@ -106,7 +106,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
     BEGIN(INITIAL);
 }
 
-<STRING>\\\r {
+<STR>\\\r {
     printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
     lex_line++;
@@ -114,38 +114,36 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
     BEGIN(INITIAL);
 }
 
-<STRING>\\. { 
+<STR>\\. { 
     printf("Line %d, col %d: invalid escape sequence (%s)\n", syn_line, syn_column, yytext);
     string_has_error = 1;
 }
 
-<STRING>\r\n {
+<STR>\r\n {
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
 }
 
-<STRING>[\n\r] { 
+<STR>[\n\r] { 
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
 }
 
-<STRING><<EOF>> { 
+<STR><<EOF>> { 
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
     yyterminate();
 }
 
-<STRING>. {
+<STR>. {
     string_buffer[buffer_pos++] = yytext[0];
 }
 
 
-[ ] { ; }
-\f  { ; }
-	  { ; }
+[ \t\f]+ { ; }
 
 \r\n { lex_line++; lex_column = 1; }
 \n   { lex_line++; lex_column = 1; }

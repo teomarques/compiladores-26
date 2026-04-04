@@ -1,3 +1,49 @@
+Terminals unused in grammar
+
+    BOOL
+    CLASS
+    DOTLENGTH
+    INT
+    PRINT
+    PARSEINT
+    PUBLIC
+    RETURN
+    STATIC
+    STRING
+    VOID
+    WHILE
+    EQ
+    NE
+    GE
+    LE
+    LSHIFT
+    RSHIFT
+    ARROW
+    AND
+    OR
+    GT
+    LT
+    ASSIGN
+    NOT
+    PLUS
+    MINUS
+    STAR
+    DIV
+    MOD
+    XOR
+    COMMA
+    SEMICOLON
+    LPAR
+    RPAR
+    LBRACE
+    RBRACE
+    LSQ
+    RSQ
+    STRLIT
+    BOOLLIT
+    RESERVED
+
+
 Grammar
 
     0 $accept: program $end
@@ -42,40 +88,82 @@ Terminals, with rules where they appear
     '/' (47) 19
     '=' (61) 4
     error (256)
-    INTEGER (258) 7
-    DOUBLE (259) 8
-    IF (260) 15
-    THEN (261) 15
+    BOOL (258)
+    CLASS (259)
+    DOTLENGTH (260)
+    DOUBLE (261) 8
     ELSE (262) 15
-    IDENTIFIER <lexeme> (263) 4 7 8 11 14
-    NATURAL <lexeme> (264) 12
-    DECIMAL <lexeme> (265) 13
-    LOW (266)
+    IF (263) 15
+    INT (264)
+    PRINT (265)
+    PARSEINT (266)
+    PUBLIC (267)
+    RETURN (268)
+    STATIC (269)
+    STRING (270)
+    VOID (271)
+    WHILE (272)
+    EQ (273)
+    NE (274)
+    GE (275)
+    LE (276)
+    LSHIFT (277)
+    RSHIFT (278)
+    ARROW (279)
+    AND (280)
+    OR (281)
+    GT (282)
+    LT (283)
+    ASSIGN (284)
+    NOT (285)
+    PLUS (286)
+    MINUS (287)
+    STAR (288)
+    DIV (289)
+    MOD (290)
+    XOR (291)
+    COMMA (292)
+    SEMICOLON (293)
+    LPAR (294)
+    RPAR (295)
+    LBRACE (296)
+    RBRACE (297)
+    LSQ (298)
+    RSQ (299)
+    INTEGER (300) 7
+    THEN (301) 15
+    IDENTIFIER <lexeme> (302) 4 7 8 11 14
+    NATURAL <lexeme> (303) 12
+    DECIMAL <lexeme> (304) 13
+    STRLIT <lexeme> (305)
+    BOOLLIT <lexeme> (306)
+    RESERVED <lexeme> (307)
+    LOW (308)
 
 
 Nonterminals, with rules where they appear
 
-    $accept (20)
+    $accept (62)
         on left: 0
-    program <node> (21)
+    program <node> (63)
         on left: 1
         on right: 0
-    functions <node> (22)
+    functions <node> (64)
         on left: 2 3
         on right: 1 3
-    function <node> (23)
+    function <node> (65)
         on left: 4
         on right: 2 3
-    parameters <node> (24)
+    parameters <node> (66)
         on left: 5 6
         on right: 4 6
-    parameter <node> (25)
+    parameter <node> (67)
         on left: 7 8
         on right: 5 6
-    arguments <node> (26)
+    arguments <node> (68)
         on left: 9 10
         on right: 10 14
-    expression <node> (27)
+    expression <node> (69)
         on left: 11 12 13 14 15 16 17 18 19 20
         on right: 4 9 10 15 16 17 18 19 20
 
@@ -137,8 +225,8 @@ State 5
     7 parameter: • INTEGER IDENTIFIER
     8          | • DOUBLE IDENTIFIER
 
-    INTEGER  shift, and go to state 8
-    DOUBLE   shift, and go to state 9
+    DOUBLE   shift, and go to state 8
+    INTEGER  shift, and go to state 9
 
     parameters  go to state 10
     parameter   go to state 11
@@ -160,14 +248,14 @@ State 7
 
 State 8
 
-    7 parameter: INTEGER • IDENTIFIER
+    8 parameter: DOUBLE • IDENTIFIER
 
     IDENTIFIER  shift, and go to state 12
 
 
 State 9
 
-    8 parameter: DOUBLE • IDENTIFIER
+    7 parameter: INTEGER • IDENTIFIER
 
     IDENTIFIER  shift, and go to state 13
 
@@ -190,16 +278,16 @@ State 11
 
 State 12
 
-    7 parameter: INTEGER IDENTIFIER •
+    8 parameter: DOUBLE IDENTIFIER •
 
-    $default  reduce using rule 7 (parameter)
+    $default  reduce using rule 8 (parameter)
 
 
 State 13
 
-    8 parameter: DOUBLE IDENTIFIER •
+    7 parameter: INTEGER IDENTIFIER •
 
-    $default  reduce using rule 8 (parameter)
+    $default  reduce using rule 7 (parameter)
 
 
 State 14
@@ -215,8 +303,8 @@ State 15
     7 parameter: • INTEGER IDENTIFIER
     8          | • DOUBLE IDENTIFIER
 
-    INTEGER  shift, and go to state 8
-    DOUBLE   shift, and go to state 9
+    DOUBLE   shift, and go to state 8
+    INTEGER  shift, and go to state 9
 
     parameter  go to state 17
 
@@ -276,7 +364,7 @@ State 18
 
 State 19
 
-   11 expression: IDENTIFIER •  [$end, THEN, ELSE, IDENTIFIER, '+', '-', '*', '/', ')', ',']
+   11 expression: IDENTIFIER •  [$end, ELSE, THEN, IDENTIFIER, '+', '-', '*', '/', ')', ',']
    14           | IDENTIFIER • '(' arguments ')'
 
     '('  shift, and go to state 25
@@ -543,7 +631,7 @@ State 34
 State 35
 
    16 expression: expression • '+' expression
-   16           | expression '+' expression •  [$end, THEN, ELSE, IDENTIFIER, '+', '-', ')', ',']
+   16           | expression '+' expression •  [$end, ELSE, THEN, IDENTIFIER, '+', '-', ')', ',']
    17           | expression • '-' expression
    18           | expression • '*' expression
    19           | expression • '/' expression
@@ -563,7 +651,7 @@ State 36
 
    16 expression: expression • '+' expression
    17           | expression • '-' expression
-   17           | expression '-' expression •  [$end, THEN, ELSE, IDENTIFIER, '+', '-', ')', ',']
+   17           | expression '-' expression •  [$end, ELSE, THEN, IDENTIFIER, '+', '-', ')', ',']
    18           | expression • '*' expression
    19           | expression • '/' expression
 
@@ -583,7 +671,7 @@ State 37
    16 expression: expression • '+' expression
    17           | expression • '-' expression
    18           | expression • '*' expression
-   18           | expression '*' expression •  [$end, THEN, ELSE, IDENTIFIER, '+', '-', '*', '/', ')', ',']
+   18           | expression '*' expression •  [$end, ELSE, THEN, IDENTIFIER, '+', '-', '*', '/', ')', ',']
    19           | expression • '/' expression
 
     $default  reduce using rule 18 (expression)
@@ -600,7 +688,7 @@ State 38
    17           | expression • '-' expression
    18           | expression • '*' expression
    19           | expression • '/' expression
-   19           | expression '/' expression •  [$end, THEN, ELSE, IDENTIFIER, '+', '-', '*', '/', ')', ',']
+   19           | expression '/' expression •  [$end, ELSE, THEN, IDENTIFIER, '+', '-', '*', '/', ')', ',']
 
     $default  reduce using rule 19 (expression)
 
@@ -696,7 +784,7 @@ State 43
 
 State 44
 
-   15 expression: IF expression THEN expression ELSE expression •  [$end, THEN, ELSE, IDENTIFIER, ')', ',']
+   15 expression: IF expression THEN expression ELSE expression •  [$end, ELSE, THEN, IDENTIFIER, ')', ',']
    16           | expression • '+' expression
    17           | expression • '-' expression
    18           | expression • '*' expression
