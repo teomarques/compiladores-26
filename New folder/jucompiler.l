@@ -37,6 +37,21 @@ char string_buffer[10000];
 int buffer_pos = 0;
 int string_has_error = 0;
 
+static void sb_append_char(char c) {
+    size_t cap = sizeof(string_buffer);
+    if (buffer_pos < (int)cap - 1) {
+        string_buffer[buffer_pos++] = c;
+    } else {
+        /* Truncate to avoid writing out of bounds. */
+        string_has_error = 1;
+    }
+}
+
+static void sb_append_two(char a, char b) {
+    sb_append_char(a);
+    sb_append_char(b);
+}
+
 static void print_simple_token(const char *token) {
     if (print_tokens) {
         printf("%s\n", token);
@@ -78,6 +93,9 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 "\"" { BEGIN(STR); string_start_line = syn_line; string_start_col = syn_column; buffer_pos = 0; string_has_error = 0; }
 
 <STR>\" {
+    size_t cap = sizeof(string_buffer);
+    if (buffer_pos < 0) buffer_pos = 0;
+    if ((size_t)buffer_pos >= cap) buffer_pos = (int)cap - 1;
     string_buffer[buffer_pos] = '\0';
     if (print_tokens && !string_has_error) printf("STRLIT(\"%s\")\n", string_buffer);
     yylval.lexeme = strdup(string_buffer);
@@ -86,8 +104,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 }
 
 <STR>\\[fnrt\\\"] { 
-    string_buffer[buffer_pos++] = '\\';
-    string_buffer[buffer_pos++] = yytext[1];
+    sb_append_two('\\', yytext[1]);
 }
 
 <STR>\\\r\n {
@@ -139,7 +156,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 }
 
 <STR>. {
-    string_buffer[buffer_pos++] = yytext[0];
+    sb_append_char(yytext[0]);
 }
 
 

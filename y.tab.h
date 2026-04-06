@@ -39,7 +39,7 @@
 # define YY_YY_Y_TAB_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
-# define YYDEBUG 1
+# define YYDEBUG 0
 #endif
 #if YYDEBUG
 extern int yydebug;
@@ -104,7 +104,9 @@ extern int yydebug;
     STRLIT = 305,                  /* STRLIT  */
     BOOLLIT = 306,                 /* BOOLLIT  */
     RESERVED = 307,                /* RESERVED  */
-    LOW = 308                      /* LOW  */
+    UPLUS = 308,                   /* UPLUS  */
+    UMINUS = 309,                  /* UMINUS  */
+    IFX = 310                      /* IFX  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -163,18 +165,20 @@ extern int yydebug;
 #define STRLIT 305
 #define BOOLLIT 306
 #define RESERVED 307
-#define LOW 308
+#define UPLUS 308
+#define UMINUS 309
+#define IFX 310
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 16 "jucompiler.y"
+#line 21 "jucompiler.y"
 
     char *lexeme;
     struct node *node;
 
-#line 178 "y.tab.h"
+#line 182 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
