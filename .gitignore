@@ -1,1 +1,12 @@
 *.pdf
+lex.yy.c
+y.tab.c
+y.tab.h
+y.output
+y.gv
+*.output
+*.tab.c
+*.tab.h
+*.zip
+jucompiler
+petit
