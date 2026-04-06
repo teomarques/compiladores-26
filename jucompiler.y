@@ -15,6 +15,13 @@ int yylex(void);
 void yyerror(char *);
 
 struct node *ast;
+static int syntax_error_count = 0;
+static int in_method_header = 0;
+
+static struct node *dup_type_node(struct node *t) {
+    if (t == NULL) return NULL;
+    return newnode(t->category, NULL);
+}
 
 %}
 
@@ -29,7 +36,6 @@ struct node *ast;
 %token PLUS MINUS STAR DIV MOD XOR
 %token COMMA SEMICOLON LPAR RPAR LBRACE RBRACE LSQ RSQ
 
-/* Tokens herdados do exemplo "petit" (podem ser removidos quando substituíres a gramática). */
 %token INTEGER THEN
 
 %token<lexeme> IDENTIFIER NATURAL DECIMAL STRLIT BOOLLIT RESERVED
@@ -37,6 +43,7 @@ struct node *ast;
 %type<node> program classdecl members member
 %type<node> methoddecl methodparams_opt methodparams paramdecl
 %type<node> fielddecl vardecl
+%type<node> vardecl_ids
 %type<node> methodbody bodyelems
 %type<node> block stmts stmts_opt stmt
 %type<node> expr call_expr arg_list_opt arg_list lvalue
@@ -76,7 +83,10 @@ classdecl:
             addchild($$, newnode(Identifier, $2));
             /* Program children: Identifier + {FieldDecl|MethodDecl}. */
             struct node_list *c = $4->children->next;
-            while (c != NULL) { addchild($$, c->node); c = c->next; }
+            while (c != NULL) {
+                if (c->node != NULL) addchild($$, c->node);
+                c = c->next;
+            }
         }
     ;
 
@@ -88,64 +98,102 @@ members:
     | members member
         {
             $$ = $1;
-            addchild($$, $2);
+            if ($2 == NULL) {
+                /* skip */
+            } else if ($2->category == Tmp_List) {
+                struct node_list *c = $2->children->next;
+                while (c != NULL) { addchild($$, c->node); c = c->next; }
+            } else {
+                addchild($$, $2);
+            }
         }
     ;
 
 member:
       methoddecl { $$ = $1; }
     | fielddecl  { $$ = $1; }
+        | SEMICOLON  { $$ = NULL; }
     ;
 
 fielddecl:
-      type_nonvoid IDENTIFIER SEMICOLON
+            error SEMICOLON
+                {
+                        /* Local recovery (spec): FieldDecl -> error ';' */
+                        $$ = NULL;
+                        yyerrok;
+                }
+        | type_nonvoid vardecl_ids SEMICOLON
         {
-            $$ = newnode(FieldDecl, NULL);
-            addchild($$, $1);
-            addchild($$, newnode(Identifier, $2));
+            $$ = newnode(Tmp_List, NULL);
+            struct node_list *c = $2->children->next;
+            while (c != NULL) {
+                struct node *fd = newnode(FieldDecl, NULL);
+                addchild(fd, dup_type_node($1));
+                addchild(fd, c->node);
+                addchild($$, fd);
+                c = c->next;
+            }
         }
-    | PUBLIC type_nonvoid IDENTIFIER SEMICOLON
+    | PUBLIC type_nonvoid vardecl_ids SEMICOLON
         {
-            $$ = newnode(FieldDecl, NULL);
-            addchild($$, $2);
-            addchild($$, newnode(Identifier, $3));
+            $$ = newnode(Tmp_List, NULL);
+            struct node_list *c = $3->children->next;
+            while (c != NULL) {
+                struct node *fd = newnode(FieldDecl, NULL);
+                addchild(fd, dup_type_node($2));
+                addchild(fd, c->node);
+                addchild($$, fd);
+                c = c->next;
+            }
         }
-    | PUBLIC STATIC type_nonvoid IDENTIFIER SEMICOLON
+    | PUBLIC STATIC type_nonvoid vardecl_ids SEMICOLON
         {
-            $$ = newnode(FieldDecl, NULL);
-            addchild($$, $3);
-            addchild($$, newnode(Identifier, $4));
+            $$ = newnode(Tmp_List, NULL);
+            struct node_list *c = $4->children->next;
+            while (c != NULL) {
+                struct node *fd = newnode(FieldDecl, NULL);
+                addchild(fd, dup_type_node($3));
+                addchild(fd, c->node);
+                addchild($$, fd);
+                c = c->next;
+            }
         }
-    | STATIC type_nonvoid IDENTIFIER SEMICOLON
+    | STATIC type_nonvoid vardecl_ids SEMICOLON
         {
-            $$ = newnode(FieldDecl, NULL);
-            addchild($$, $2);
-            addchild($$, newnode(Identifier, $3));
+            $$ = newnode(Tmp_List, NULL);
+            struct node_list *c = $3->children->next;
+            while (c != NULL) {
+                struct node *fd = newnode(FieldDecl, NULL);
+                addchild(fd, dup_type_node($2));
+                addchild(fd, c->node);
+                addchild($$, fd);
+                c = c->next;
+            }
         }
     ;
 
 methoddecl:
-      PUBLIC STATIC type_nonvoid IDENTIFIER LPAR methodparams_opt RPAR methodbody
+      PUBLIC STATIC type_nonvoid IDENTIFIER { in_method_header = 1; } LPAR methodparams_opt RPAR { in_method_header = 0; } methodbody
         {
             struct node *header = newnode(MethodHeader, NULL);
             addchild(header, $3);
             addchild(header, newnode(Identifier, $4));
-            addchild(header, $6);
+                        addchild(header, $7);
 
             $$ = newnode(MethodDecl, NULL);
             addchild($$, header);
-            addchild($$, $8);
+            addchild($$, $10);
         }
-    | PUBLIC STATIC VOID IDENTIFIER LPAR methodparams_opt RPAR methodbody
+    | PUBLIC STATIC VOID IDENTIFIER { in_method_header = 1; } LPAR methodparams_opt RPAR { in_method_header = 0; } methodbody
         {
             struct node *header = newnode(MethodHeader, NULL);
             addchild(header, newnode(Void, NULL));
             addchild(header, newnode(Identifier, $4));
-            addchild(header, $6);
+            addchild(header, $7);
 
             $$ = newnode(MethodDecl, NULL);
             addchild($$, header);
-            addchild($$, $8);
+            addchild($$, $10);
         }
     ;
 
@@ -200,15 +248,45 @@ bodyelems:
       /* empty */
         { $$ = newnode(MethodBody, NULL); }
     | bodyelems stmt
-        { $$ = $1; addchild($$, $2); }
+        {
+            $$ = $1;
+            if ($2 == NULL) {
+                /* skip */
+            } else if ($2->category == Tmp_List) {
+                struct node_list *c = $2->children->next;
+                while (c != NULL) { addchild($$, c->node); c = c->next; }
+            } else {
+                addchild($$, $2);
+            }
+        }
     ;
 
 vardecl:
-      type_nonvoid IDENTIFIER SEMICOLON
+      type_nonvoid vardecl_ids SEMICOLON
         {
-            $$ = newnode(VarDecl, NULL);
-            addchild($$, $1);
-            addchild($$, newnode(Identifier, $2));
+            /* Build one VarDecl per identifier (supports: int a,b,c;). */
+            $$ = newnode(Tmp_List, NULL);
+            struct node_list *c = $2->children->next;
+            while (c != NULL) {
+                struct node *vd = newnode(VarDecl, NULL);
+                addchild(vd, dup_type_node($1));
+                addchild(vd, c->node);
+                addchild($$, vd);
+                c = c->next;
+            }
+        }
+    ;
+
+vardecl_ids:
+      IDENTIFIER
+        {
+            $$ = newnode(Tmp_List, NULL);
+            addchild($$, newnode(Identifier, $1));
+        }
+    | vardecl_ids COMMA IDENTIFIER
+        {
+            $$ = $1;
+            addchild($$, newnode(Identifier, $3));
         }
     ;
 
@@ -239,9 +317,29 @@ stmts_opt:
 
 stmts:
       stmt
-        { $$ = newnode(Tmp_List, NULL); addchild($$, $1); }
+        {
+            $$ = newnode(Tmp_List, NULL);
+            if ($1 == NULL) {
+                /* skip */
+            } else if ($1->category == Tmp_List) {
+                struct node_list *c = $1->children->next;
+                while (c != NULL) { addchild($$, c->node); c = c->next; }
+            } else {
+                addchild($$, $1);
+            }
+        }
     | stmts stmt
-        { $$ = $1; addchild($$, $2); }
+        {
+            $$ = $1;
+            if ($2 == NULL) {
+                /* skip */
+            } else if ($2->category == Tmp_List) {
+                struct node_list *c = $2->children->next;
+                while (c != NULL) { addchild($$, c->node); c = c->next; }
+            } else {
+                addchild($$, $2);
+            }
+        }
     ;
 
 stmt:
@@ -249,6 +347,12 @@ stmt:
         { $$ = $1; }
     | vardecl
         { $$ = $1; }
+    | error SEMICOLON
+        {
+            /* Local recovery (spec): Statement -> error ';' */
+            $$ = NULL;
+            yyerrok;
+        }
     | lvalue ASSIGN expr SEMICOLON
         {
             $$ = newnode(Assign, NULL);
@@ -323,6 +427,12 @@ expr:
             addchild($$, newnode(Identifier, $3));
             addchild($$, $5);
         }
+    | PARSEINT LPAR error RPAR
+        {
+            /* Local recovery (spec): ParseArgs -> PARSEINT '(' error ')' */
+            $$ = NULL;
+            yyerrok;
+        }
     | expr OR expr
         { $$ = newnode(Or, NULL); addchild($$, $1); addchild($$, $3); }
     | expr AND expr
@@ -377,6 +487,12 @@ expr:
         { $$ = newnode(Length, NULL); addchild($$, $1); }
     | LPAR expr RPAR
         { $$ = $2; }
+    | LPAR error RPAR
+        {
+            /* Local recovery (spec): Expr -> '(' error ')' */
+            $$ = NULL;
+            yyerrok;
+        }
     ;
 
 call_expr:
@@ -386,6 +502,12 @@ call_expr:
             addchild($$, newnode(Identifier, $1));
             struct node_list *c = $3->children->next;
             while (c != NULL) { addchild($$, c->node); c = c->next; }
+        }
+    | IDENTIFIER LPAR error RPAR
+        {
+            /* Local recovery (spec): MethodInvocation -> IDENTIFIER '(' error ')' */
+            $$ = NULL;
+            yyerrok;
         }
     ;
 
@@ -497,7 +619,13 @@ void yyerror(char *msg) {
     /* Formato pedido na meta2 (aproximação mínima enquanto a gramática é substituída):
        Line X, col Y: syntax error: <token> */
     if (yytext == NULL) yytext = "";
+    syntax_error_count++;
     printf("Line %d, col %d: %s: %s\n", syn_line, syn_column, msg, yytext);
+
+    /* Avoid cascading errors: parameter list / method header errors are fatal. */
+    if (in_method_header) {
+        exit(0);
+    }
 }
 
 /* Program entry point.
@@ -515,6 +643,8 @@ typedef enum {
 
 int main(int argc, char **argv) {
     run_mode mode = MODE_PARSE_ERRORS;
+    syntax_error_count = 0;
+    in_method_header = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-l") == 0) {
@@ -539,7 +669,7 @@ int main(int argc, char **argv) {
     /* Default / -e2 / -t: run parser (which calls yylex). */
     print_tokens = 0;
     print_tree = (mode == MODE_PARSE_TREE) ? 1 : 0;
-    if (yyparse() == 0 && print_tree && ast != NULL) {
+    if (yyparse() == 0 && syntax_error_count == 0 && print_tree && ast != NULL) {
         show(ast, 0);
     }
 
