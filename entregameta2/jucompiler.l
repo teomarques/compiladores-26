@@ -86,13 +86,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 <COMMENT>\r { lex_line++; lex_column = 1; }
 <COMMENT>[^*/\r\n]+ { ; }
 <COMMENT>[*/] { ; }
-<COMMENT><<EOF>> {
-    printf("Line %d, col %d: unterminated comment\n", comment_start_line, comment_start_col);
-    syn_line = lex_line;
-    syn_column = lex_column;
-    BEGIN(INITIAL);
-    return 0;
-}
+<COMMENT><<EOF>> { printf("Line %d, col %d: unterminated comment\n", comment_start_line, comment_start_col); yyterminate(); }
 
 "//"[^\r\n]* { ; }
 
@@ -160,10 +154,15 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
     string_has_error = 1;
 }
 
-<STR>\r\n|\r|\n {
+<STR>\r\n {
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
-    syn_line = lex_line;
-    syn_column = lex_column;
+    lex_line++;
+    lex_column = 1;
+    BEGIN(INITIAL);
+}
+
+<STR>[\n\r] { 
+    printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
@@ -171,10 +170,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 
 <STR><<EOF>> { 
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
-    syn_line = lex_line;
-    syn_column = lex_column;
-    BEGIN(INITIAL);
-    return 0;
+    yyterminate();
 }
 
 <STR>. {
@@ -291,11 +287,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 
 . { printf("Line %d, col %d: illegal character (%s)\n", syn_line, syn_column, yytext); }
 
-<INITIAL><<EOF>> {
-    syn_line = lex_line;
-    syn_column = lex_column;
-    return 0;
-}
+<<EOF>> { YY_USER_ACTION; return 0; }
 
 %%
 

@@ -103,8 +103,6 @@ class_members:
         { $$ = $1; addchild($1, $4); }
     | class_members SEMICOLON
         { $$ = $1; }
-    | class_members PUBLIC error SEMICOLON
-        { $$ = $1; yyerrok; }
     ;
 
 /* ---- FieldDecl: type id { COMMA id } SEMICOLON ---- */
@@ -254,8 +252,6 @@ var_decl:
         }
       vd_id_list SEMICOLON
         { $$ = vd_accum; }
-        | error SEMICOLON
-                { $$ = newnode(N_MethodBody, NULL); yyerrok; }
     ;
 
 vd_id_list:
@@ -279,11 +275,9 @@ stmt_list:
     | stmt_list var_decl
         {
             $$ = $1;
-            if ($2) {
-                struct node_list *c;
-                for (c = $2->children; c; c = c->next)
-                    if (c->node) addchild($$, c->node);
-            }
+            struct node_list *c;
+            for (c = $2->children; c; c = c->next)
+                if (c->node) addchild($$, c->node);
         }
     ;
 
@@ -305,7 +299,7 @@ stmt:
 
 /* stmt_no_if: sem if-then solto */
 stmt_no_if:
-    IF LPAR expr RPAR stmt_no_if ELSE stmt
+      IF LPAR expr RPAR stmt_no_if ELSE stmt_no_if
         {
             $$ = newnode(N_If, NULL);
             addchild($$, $3);

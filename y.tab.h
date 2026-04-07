@@ -39,7 +39,7 @@
 # define YY_YY_Y_TAB_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
-# define YYDEBUG 1
+# define YYDEBUG 0
 #endif
 #if YYDEBUG
 extern int yydebug;
@@ -96,15 +96,16 @@ extern int yydebug;
     RBRACE = 297,                  /* RBRACE  */
     LSQ = 298,                     /* LSQ  */
     RSQ = 299,                     /* RSQ  */
-    INTEGER = 300,                 /* INTEGER  */
-    THEN = 301,                    /* THEN  */
-    IDENTIFIER = 302,              /* IDENTIFIER  */
-    NATURAL = 303,                 /* NATURAL  */
-    DECIMAL = 304,                 /* DECIMAL  */
-    STRLIT = 305,                  /* STRLIT  */
-    BOOLLIT = 306,                 /* BOOLLIT  */
-    RESERVED = 307,                /* RESERVED  */
-    LOW = 308                      /* LOW  */
+    IDENTIFIER = 300,              /* IDENTIFIER  */
+    NATURAL = 301,                 /* NATURAL  */
+    DECIMAL = 302,                 /* DECIMAL  */
+    STRLIT = 303,                  /* STRLIT  */
+    BOOLLIT = 304,                 /* BOOLLIT  */
+    RESERVED = 305,                /* RESERVED  */
+    IFX = 306,                     /* IFX  */
+    UPLUS = 307,                   /* UPLUS  */
+    UMINUS = 308,                  /* UMINUS  */
+    UNOT = 309                     /* UNOT  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -155,26 +156,27 @@ extern int yydebug;
 #define RBRACE 297
 #define LSQ 298
 #define RSQ 299
-#define INTEGER 300
-#define THEN 301
-#define IDENTIFIER 302
-#define NATURAL 303
-#define DECIMAL 304
-#define STRLIT 305
-#define BOOLLIT 306
-#define RESERVED 307
-#define LOW 308
+#define IDENTIFIER 300
+#define NATURAL 301
+#define DECIMAL 302
+#define STRLIT 303
+#define BOOLLIT 304
+#define RESERVED 305
+#define IFX 306
+#define UPLUS 307
+#define UMINUS 308
+#define UNOT 309
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 16 "jucompiler.y"
+#line 44 "jucompiler.y"
 
-    char *lexeme;
-    struct node *node;
+    char        *lexeme;
+    struct node *n;
 
-#line 178 "y.tab.h"
+#line 180 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
