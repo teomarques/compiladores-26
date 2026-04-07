@@ -29,6 +29,8 @@ int syn_column = -1;
 
 int print_tokens = 0;
 
+extern int lex_error_count;
+
 int comment_start_line = 1;
 int comment_start_col = 1;
 int string_start_line = 1;
@@ -86,7 +88,14 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 <COMMENT>\r { lex_line++; lex_column = 1; }
 <COMMENT>[^*/\r\n]+ { ; }
 <COMMENT>[*/] { ; }
-<COMMENT><<EOF>> { printf("Line %d, col %d: unterminated comment\n", comment_start_line, comment_start_col); yyterminate(); }
+<COMMENT><<EOF>> {
+    printf("Line %d, col %d: unterminated comment\n", comment_start_line, comment_start_col);
+    lex_error_count++;
+    /* Record current scanner position for parser EOF error reporting. */
+    syn_line = lex_line;
+    syn_column = lex_column;
+    yyterminate();
+}
 
 "//"[^\r\n]* { ; }
 
@@ -98,9 +107,19 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
     if ((size_t)buffer_pos >= cap) buffer_pos = (int)cap - 1;
     string_buffer[buffer_pos] = '\0';
     if (print_tokens && !string_has_error) printf("STRLIT(\"%s\")\n", string_buffer);
-    yylval.lexeme = strdup(string_buffer);
-    BEGIN(INITIAL);
-    return STRLIT;
+
+    if (string_has_error) {
+        /* Discard invalid strings: keep lexical error reporting, but don't
+           return STRLIT to the parser (matches meta2 expected behavior). */
+        BEGIN(INITIAL);
+    } else {
+        /* For parser error reporting, STRLIT should point to the opening quote. */
+        syn_line = string_start_line;
+        syn_column = string_start_col;
+        yylval.lexeme = strdup(string_buffer);
+        BEGIN(INITIAL);
+        return STRLIT;
+    }
 }
 
 <STR>\\[fnrt\\\"] { 
@@ -110,6 +129,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 <STR>\\\r\n {
     printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_error_count += 2;
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
@@ -118,6 +138,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 <STR>\\\n {
     printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_error_count += 2;
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
@@ -126,6 +147,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 <STR>\\\r {
     printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_error_count += 2;
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
@@ -134,10 +156,12 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 <STR>\\. { 
     printf("Line %d, col %d: invalid escape sequence (%s)\n", syn_line, syn_column, yytext);
     string_has_error = 1;
+    lex_error_count++;
 }
 
 <STR>\r\n {
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_error_count++;
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
@@ -145,6 +169,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 
 <STR>[\n\r] { 
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_error_count++;
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
@@ -152,6 +177,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 
 <STR><<EOF>> { 
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_error_count++;
     yyterminate();
 }
 
@@ -210,6 +236,16 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 "public" { print_simple_token("PUBLIC"); return PUBLIC; }
 "return" { print_simple_token("RETURN"); return RETURN; }
 "static" { print_simple_token("STATIC"); return STATIC; }
+"String[]" {
+    /* Parser wants a single token so plain 'String' errors at 'String'.
+       Lexer-only mode (-l) historically prints STRING, LSQ, RSQ separately. */
+    if (print_tokens) {
+        print_simple_token("STRING");
+        print_simple_token("LSQ");
+        print_simple_token("RSQ");
+    }
+    return STRINGARRAY;
+}
 "String" { print_simple_token("STRING"); return STRING; }
 "void" { print_simple_token("VOID"); return VOID; }
 "while" { print_simple_token("WHILE"); return WHILE; }
@@ -267,7 +303,10 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 {character}+({digit}|{character})* { PASS_TOKEN(); print_valued_token("IDENTIFIER", yytext); return IDENTIFIER; }
 0|{nonzero}({digit}|{underscore})*{digit}|{nonzero} { PASS_TOKEN(); print_valued_token("NATURAL", yytext); return NATURAL; }
 
-. { printf("Line %d, col %d: illegal character (%s)\n", syn_line, syn_column, yytext); }
+. {
+    printf("Line %d, col %d: illegal character (%s)\n", syn_line, syn_column, yytext);
+    lex_error_count++;
+}
 
 <<EOF>> { YY_USER_ACTION; return 0; }
 

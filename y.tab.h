@@ -67,46 +67,47 @@ extern int yydebug;
     RETURN = 268,                  /* RETURN  */
     STATIC = 269,                  /* STATIC  */
     STRING = 270,                  /* STRING  */
-    VOID = 271,                    /* VOID  */
-    WHILE = 272,                   /* WHILE  */
-    EQ = 273,                      /* EQ  */
-    NE = 274,                      /* NE  */
-    GE = 275,                      /* GE  */
-    LE = 276,                      /* LE  */
-    LSHIFT = 277,                  /* LSHIFT  */
-    RSHIFT = 278,                  /* RSHIFT  */
-    ARROW = 279,                   /* ARROW  */
-    AND = 280,                     /* AND  */
-    OR = 281,                      /* OR  */
-    GT = 282,                      /* GT  */
-    LT = 283,                      /* LT  */
-    ASSIGN = 284,                  /* ASSIGN  */
-    NOT = 285,                     /* NOT  */
-    PLUS = 286,                    /* PLUS  */
-    MINUS = 287,                   /* MINUS  */
-    STAR = 288,                    /* STAR  */
-    DIV = 289,                     /* DIV  */
-    MOD = 290,                     /* MOD  */
-    XOR = 291,                     /* XOR  */
-    COMMA = 292,                   /* COMMA  */
-    SEMICOLON = 293,               /* SEMICOLON  */
-    LPAR = 294,                    /* LPAR  */
-    RPAR = 295,                    /* RPAR  */
-    LBRACE = 296,                  /* LBRACE  */
-    RBRACE = 297,                  /* RBRACE  */
-    LSQ = 298,                     /* LSQ  */
-    RSQ = 299,                     /* RSQ  */
-    INTEGER = 300,                 /* INTEGER  */
-    THEN = 301,                    /* THEN  */
-    IDENTIFIER = 302,              /* IDENTIFIER  */
-    NATURAL = 303,                 /* NATURAL  */
-    DECIMAL = 304,                 /* DECIMAL  */
-    STRLIT = 305,                  /* STRLIT  */
-    BOOLLIT = 306,                 /* BOOLLIT  */
-    RESERVED = 307,                /* RESERVED  */
-    UPLUS = 308,                   /* UPLUS  */
-    UMINUS = 309,                  /* UMINUS  */
-    IFX = 310                      /* IFX  */
+    STRINGARRAY = 271,             /* STRINGARRAY  */
+    VOID = 272,                    /* VOID  */
+    WHILE = 273,                   /* WHILE  */
+    EQ = 274,                      /* EQ  */
+    NE = 275,                      /* NE  */
+    GE = 276,                      /* GE  */
+    LE = 277,                      /* LE  */
+    LSHIFT = 278,                  /* LSHIFT  */
+    RSHIFT = 279,                  /* RSHIFT  */
+    ARROW = 280,                   /* ARROW  */
+    AND = 281,                     /* AND  */
+    OR = 282,                      /* OR  */
+    GT = 283,                      /* GT  */
+    LT = 284,                      /* LT  */
+    ASSIGN = 285,                  /* ASSIGN  */
+    NOT = 286,                     /* NOT  */
+    PLUS = 287,                    /* PLUS  */
+    MINUS = 288,                   /* MINUS  */
+    STAR = 289,                    /* STAR  */
+    DIV = 290,                     /* DIV  */
+    MOD = 291,                     /* MOD  */
+    XOR = 292,                     /* XOR  */
+    COMMA = 293,                   /* COMMA  */
+    SEMICOLON = 294,               /* SEMICOLON  */
+    LPAR = 295,                    /* LPAR  */
+    RPAR = 296,                    /* RPAR  */
+    LBRACE = 297,                  /* LBRACE  */
+    RBRACE = 298,                  /* RBRACE  */
+    LSQ = 299,                     /* LSQ  */
+    RSQ = 300,                     /* RSQ  */
+    INTEGER = 301,                 /* INTEGER  */
+    THEN = 302,                    /* THEN  */
+    IDENTIFIER = 303,              /* IDENTIFIER  */
+    NATURAL = 304,                 /* NATURAL  */
+    DECIMAL = 305,                 /* DECIMAL  */
+    STRLIT = 306,                  /* STRLIT  */
+    BOOLLIT = 307,                 /* BOOLLIT  */
+    RESERVED = 308,                /* RESERVED  */
+    UPLUS = 309,                   /* UPLUS  */
+    UMINUS = 310,                  /* UMINUS  */
+    IFX = 311                      /* IFX  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -128,57 +129,58 @@ extern int yydebug;
 #define RETURN 268
 #define STATIC 269
 #define STRING 270
-#define VOID 271
-#define WHILE 272
-#define EQ 273
-#define NE 274
-#define GE 275
-#define LE 276
-#define LSHIFT 277
-#define RSHIFT 278
-#define ARROW 279
-#define AND 280
-#define OR 281
-#define GT 282
-#define LT 283
-#define ASSIGN 284
-#define NOT 285
-#define PLUS 286
-#define MINUS 287
-#define STAR 288
-#define DIV 289
-#define MOD 290
-#define XOR 291
-#define COMMA 292
-#define SEMICOLON 293
-#define LPAR 294
-#define RPAR 295
-#define LBRACE 296
-#define RBRACE 297
-#define LSQ 298
-#define RSQ 299
-#define INTEGER 300
-#define THEN 301
-#define IDENTIFIER 302
-#define NATURAL 303
-#define DECIMAL 304
-#define STRLIT 305
-#define BOOLLIT 306
-#define RESERVED 307
-#define UPLUS 308
-#define UMINUS 309
-#define IFX 310
+#define STRINGARRAY 271
+#define VOID 272
+#define WHILE 273
+#define EQ 274
+#define NE 275
+#define GE 276
+#define LE 277
+#define LSHIFT 278
+#define RSHIFT 279
+#define ARROW 280
+#define AND 281
+#define OR 282
+#define GT 283
+#define LT 284
+#define ASSIGN 285
+#define NOT 286
+#define PLUS 287
+#define MINUS 288
+#define STAR 289
+#define DIV 290
+#define MOD 291
+#define XOR 292
+#define COMMA 293
+#define SEMICOLON 294
+#define LPAR 295
+#define RPAR 296
+#define LBRACE 297
+#define RBRACE 298
+#define LSQ 299
+#define RSQ 300
+#define INTEGER 301
+#define THEN 302
+#define IDENTIFIER 303
+#define NATURAL 304
+#define DECIMAL 305
+#define STRLIT 306
+#define BOOLLIT 307
+#define RESERVED 308
+#define UPLUS 309
+#define UMINUS 310
+#define IFX 311
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 28 "jucompiler.y"
+#line 32 "jucompiler.y"
 
     char *lexeme;
     struct node *node;
 
-#line 182 "y.tab.h"
+#line 184 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
