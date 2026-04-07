@@ -24,25 +24,28 @@ struct node *newnode(enum category category, char *token)
 
 void addchild(struct node *parent, struct node *child)
 {
+    struct node_list *c;
     struct node_list *nl = malloc(sizeof(struct node_list));
     nl->node = child;
     nl->next = NULL;
-    struct node_list *c = parent->children;
+    c = parent->children;
     while (c->next) c = c->next;
     c->next = nl;
 }
 
 static void printast_rec(struct node *n, int depth)
 {
+    int i;
+    struct node_list *c;
     if (!n) return;
 
-    for (int i = 0; i < depth; i++) printf("..");
+    for (i = 0; i < depth; i++) printf("..");
 
     printf("%s", category_name[n->category]);
     if (n->token) printf("(%s)", n->token);
     printf("\n");
 
-    for (struct node_list *c = n->children; c; c = c->next)
+    for (c = n->children; c; c = c->next)
         printast_rec(c->node, depth + 1);
 }
 

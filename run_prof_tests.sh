@@ -5,8 +5,49 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPILER="${COMPILER:-$SCRIPT_DIR/jucompiler}"
 TEST_ROOT="${TEST_ROOT:-$SCRIPT_DIR/../repo-prof/java/meta2}"
 OUT_ROOT="${OUT_ROOT:-$SCRIPT_DIR/prof-results/meta2}"
+MOOSHAK_STRICT="${MOOSHAK_STRICT:-1}"
 
-if [[ ! -x "$COMPILER" ]]; then
+build_mooshak_strict() {
+  local build_log="$OUT_ROOT/mooshak_build.log"
+  local build_bin="$OUT_ROOT/jucompiler.mooshak"
+  local has_warning=0
+
+  mkdir -p "$OUT_ROOT"
+
+  {
+    echo "[1/3] flex jucompiler.l"
+    flex "$SCRIPT_DIR/jucompiler.l"
+    echo "[2/3] yacc -d jucompiler.y"
+    yacc -d "$SCRIPT_DIR/jucompiler.y"
+    echo "[3/3] gcc -Wall -pedantic -std=c89 -Werror lex.yy.c y.tab.c ast.c -o jucompiler"
+    gcc -Wall -pedantic -std=c89 -Werror \
+      "$SCRIPT_DIR/lex.yy.c" "$SCRIPT_DIR/y.tab.c" "$SCRIPT_DIR/ast.c" \
+      -o "$build_bin"
+  } >"$build_log" 2>&1 || {
+    echo "ERRO: build Mooshak-friendly falhou."
+    echo "--- LOG BUILD ($build_log) ---"
+    cat "$build_log"
+    return 1
+  }
+
+  if grep -qi "warning:" "$build_log"; then
+    has_warning=1
+  fi
+
+  if (( has_warning )); then
+    echo "ERRO: warnings detetados no build estrito (Mooshak pode rejeitar)."
+    echo "--- LOG BUILD ($build_log) ---"
+    cat "$build_log"
+    return 1
+  fi
+
+  COMPILER="$build_bin"
+  echo "OK: build Mooshak-friendly sem warnings."
+}
+
+if (( MOOSHAK_STRICT )); then
+  build_mooshak_strict
+elif [[ ! -x "$COMPILER" ]]; then
   echo "Erro: compilador nao encontrado ou sem permissao de execucao: $COMPILER"
   echo "Sugestao: execute 'make' em $SCRIPT_DIR"
   exit 1

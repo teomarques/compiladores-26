@@ -1,5 +1,0 @@
---- /home/teomarques/Desktop/0_UC/0_2S2A/COMP/praticas/compiladores-26/../repo-prof/java/meta2/MethodFieldError2.out	2026-04-07 14:59:00.401453860 +0100
-+++ /home/teomarques/Desktop/0_UC/0_2S2A/COMP/praticas/compiladores-26/prof-results/meta2/MethodFieldError2.got	2026-04-07 19:11:05.891849255 +0100
-@@ -1 +1,2 @@
- Line 8, col 5: syntax error: }
-+Line 9, col 5: syntax error: public

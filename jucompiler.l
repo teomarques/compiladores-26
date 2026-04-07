@@ -20,12 +20,16 @@
 
 /* Para tokens com valor (IDENTIFIER, NATURAL, DECIMAL, BOOLLIT, STRLIT, etc.)
  * assume-se que o %union no yacc tem o campo 'lexeme'. */
-#define PASS_TOKEN() yylval.lexeme = strdup(yytext)
+#define PASS_TOKEN() do { \
+    yylval.lexeme = malloc(strlen(yytext) + 1); \
+    if (yylval.lexeme) strcpy(yylval.lexeme, yytext); \
+} while(0)
 
 int lex_line = 1;
 int lex_column = 1;
 int syn_line = -1;
 int syn_column = -1;
+int lex_errs = 0;
 
 int print_tokens = 0;
 
@@ -66,7 +70,7 @@ static void print_valued_token(const char *token, const char *value) {
 
 %}
 
-%option noyywrap
+%option noyywrap noinput nounput never-interactive
 
 digit [0-9]
 nonzero [1-9]
@@ -119,7 +123,8 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
         quoted[len + 2] = '\0';
         yylval.lexeme = quoted;
     } else {
-        yylval.lexeme = strdup("\"\"");
+        yylval.lexeme = malloc(3);
+        if (yylval.lexeme) strcpy(yylval.lexeme, "\"\"");
     }
     syn_line = string_start_line;
     syn_column = string_start_col;
@@ -134,6 +139,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 <STR>\\\r\n {
     printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_errs++;
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
@@ -142,6 +148,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 <STR>\\\n {
     printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_errs++;
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
@@ -150,6 +157,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 <STR>\\\r {
     printf("Line %d, col %d: invalid escape sequence (\\)\n", syn_line, syn_column);
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_errs++;
     lex_line++;
     lex_column = 1;
     BEGIN(INITIAL);
@@ -157,11 +165,13 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 
 <STR>\\. { 
     printf("Line %d, col %d: invalid escape sequence (%s)\n", syn_line, syn_column, yytext);
+    lex_errs++;
     string_has_error = 1;
 }
 
 <STR>\r\n|\r|\n {
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_errs++;
     syn_line = lex_line;
     syn_column = lex_column;
     lex_line++;
@@ -171,6 +181,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 
 <STR><<EOF>> { 
     printf("Line %d, col %d: unterminated string literal\n", string_start_line, string_start_col);
+    lex_errs++;
     syn_line = lex_line;
     syn_column = lex_column;
     BEGIN(INITIAL);
@@ -289,7 +300,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 {character}+({digit}|{character})* { PASS_TOKEN(); print_valued_token("IDENTIFIER", yytext); return IDENTIFIER; }
 0|{nonzero}({digit}|{underscore})*{digit}|{nonzero} { PASS_TOKEN(); print_valued_token("NATURAL", yytext); return NATURAL; }
 
-. { printf("Line %d, col %d: illegal character (%s)\n", syn_line, syn_column, yytext); }
+. { lex_errs++; printf("Line %d, col %d: illegal character (%s)\n", syn_line, syn_column, yytext); }
 
 <INITIAL><<EOF>> {
     syn_line = lex_line;

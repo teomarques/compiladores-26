@@ -21,6 +21,7 @@ void printast(struct node *root);
 
 extern int  lex_line, lex_column;
 extern int  syn_line, syn_column;
+extern int  lex_errs;
 extern char *yytext;
 extern int  yychar;
 extern int  print_tokens;
@@ -103,8 +104,8 @@ class_members:
         { $$ = $1; addchild($1, $4); }
     | class_members SEMICOLON
         { $$ = $1; }
-    | class_members PUBLIC error SEMICOLON
-        { $$ = $1; yyerrok; }
+    | class_members error SEMICOLON
+        { $$ = $1; }
     ;
 
 /* ---- FieldDecl: type id { COMMA id } SEMICOLON ---- */
@@ -124,7 +125,7 @@ field_decl:
         }
       field_id_list SEMICOLON
     | error SEMICOLON
-        { yyerrok; }
+                { }
     ;
 
 field_id_list:
@@ -158,28 +159,12 @@ method_header:
             addchild($$, newnode(N_Identifier, $2));
             addchild($$, $4);
         }
-    | type IDENTIFIER LPAR error RPAR
-        {
-            $$ = newnode(N_MethodHeader, NULL);
-            addchild($$, $1);
-            addchild($$, newnode(N_Identifier, $2));
-            addchild($$, newnode(N_MethodParams, NULL));
-            yyerrok;
-        }
     | VOID IDENTIFIER LPAR formal_params RPAR
         {
             $$ = newnode(N_MethodHeader, NULL);
             addchild($$, newnode(N_Void, NULL));
             addchild($$, newnode(N_Identifier, $2));
             addchild($$, $4);
-        }
-    | VOID IDENTIFIER LPAR error RPAR
-        {
-            $$ = newnode(N_MethodHeader, NULL);
-            addchild($$, newnode(N_Void, NULL));
-            addchild($$, newnode(N_Identifier, $2));
-            addchild($$, newnode(N_MethodParams, NULL));
-            yyerrok;
         }
     ;
 
@@ -236,8 +221,8 @@ type:
 method_body:
       LBRACE stmt_list RBRACE
         {
-            $$ = newnode(N_MethodBody, NULL);
             struct node_list *c;
+            $$ = newnode(N_MethodBody, NULL);
             for (c = $2->children; c; c = c->next)
                 if (c->node) addchild($$, c->node);
         }
@@ -254,8 +239,6 @@ var_decl:
         }
       vd_id_list SEMICOLON
         { $$ = vd_accum; }
-        | error SEMICOLON
-                { $$ = newnode(N_MethodBody, NULL); yyerrok; }
     ;
 
 vd_id_list:
@@ -278,9 +261,9 @@ stmt_list:
         }
     | stmt_list var_decl
         {
+            struct node_list *c;
             $$ = $1;
             if ($2) {
-                struct node_list *c;
                 for (c = $2->children; c; c = c->next)
                     if (c->node) addchild($$, c->node);
             }
@@ -301,18 +284,18 @@ stmt:
             addchild($$, $5 ? $5 : newnode(N_Block, NULL));
             addchild($$, newnode(N_Block, NULL));
         }
+    | IF LPAR expr RPAR stmt ELSE stmt
+        {
+            $$ = newnode(N_If, NULL);
+            addchild($$, $3);
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
+            addchild($$, $7 ? $7 : newnode(N_Block, NULL));
+        }
     ;
 
 /* stmt_no_if: sem if-then solto */
 stmt_no_if:
-    IF LPAR expr RPAR stmt_no_if ELSE stmt
-        {
-            $$ = newnode(N_If, NULL);
-            addchild($$, $3);
-                        addchild($$, $5 ? $5 : newnode(N_Block, NULL));
-                        addchild($$, $7 ? $7 : newnode(N_Block, NULL));
-        }
-    | WHILE LPAR expr RPAR stmt_no_if
+    WHILE LPAR expr RPAR stmt
         {
             $$ = newnode(N_While, NULL);
             addchild($$, $3);
@@ -336,7 +319,7 @@ stmt_no_if:
             if ($2) addchild($$, $2);
         }
     | error SEMICOLON
-        { $$ = NULL; yyerrok; }
+        { $$ = NULL; }
     | SEMICOLON
         { $$ = NULL; }
     ;
@@ -355,13 +338,13 @@ block_stmt:
 method_invocation:
       IDENTIFIER LPAR call_args RPAR
         {
+                        struct node_list *c;
             $$ = newnode(N_Call, NULL);
             addchild($$, newnode(N_Identifier, $1));
-            struct node_list *c;
             for (c = $3->children; c; c = c->next) addchild($$, c->node);
         }
     | IDENTIFIER LPAR error RPAR
-        { syn_errs++; $$ = NULL; }
+        { $$ = NULL; }
     ;
 
 call_args:
@@ -394,7 +377,7 @@ parse_args_stmt:
             addchild($$, $5);
         }
     | PARSEINT LPAR error RPAR
-        { syn_errs++; $$ = NULL; }
+        { $$ = NULL; }
     ;
 
 /* ============================================================
@@ -429,7 +412,7 @@ op_expr:
         { $$ = newnode(N_BoolLit, $1); }
 
     | LPAR expr RPAR  { $$ = $2; }
-    | LPAR error RPAR { syn_errs++; $$ = NULL; }
+    | LPAR error RPAR { $$ = NULL; }
 
     | IDENTIFIER
         { $$ = newnode(N_Identifier, $1); }
@@ -440,14 +423,11 @@ op_expr:
     /* MethodInvocation como expr */
     | IDENTIFIER LPAR call_args RPAR
         {
+            struct node_list *c;
             $$ = newnode(N_Call, NULL);
             addchild($$, newnode(N_Identifier, $1));
-            struct node_list *c;
             for (c = $3->children; c; c = c->next) addchild($$, c->node);
         }
-    | IDENTIFIER LPAR error RPAR
-        { syn_errs++; $$ = NULL; }
-
     /* ParseArgs como expr */
     | PARSEINT LPAR IDENTIFIER LSQ expr RSQ RPAR
         { $$ = newnode(N_ParseArgs, NULL);
@@ -525,11 +505,15 @@ const char *category_name[] = {
  * ============================================================ */
 static struct node *make_block(struct node *sl)
 {
-    if (!sl) return newnode(N_Block, NULL);
     int nc = 0;
     int saw_any = 0;
     struct node *single = NULL;
     struct node_list *c;
+    struct node *blk;
+    struct node_list *c2;
+
+    if (!sl) return newnode(N_Block, NULL);
+
     for (c = sl->children; c; c = c->next) {
         if (c->node) {
             int is_empty_block = 0;
@@ -548,14 +532,14 @@ static struct node *make_block(struct node *sl)
     if (nc == 0)
         return saw_any ? NULL : newnode(N_Block, NULL);
     if (nc == 1) return single;
-    struct node *blk = newnode(N_Block, NULL);
-    struct node_list *c2;
+
+    blk = newnode(N_Block, NULL);
     for (c2 = sl->children; c2; c2 = c2->next) {
         if (c2->node) {
             int is_empty_block = 0;
+            struct node_list *cc;
             if (c2->node->category == N_Block) {
                 is_empty_block = 1;
-                struct node_list *cc;
                 for (cc = c2->node->children; cc; cc = cc->next)
                     if (cc->node) { is_empty_block = 0; break; }
             }
@@ -588,21 +572,27 @@ void yyerror(const char *msg)
  * ============================================================ */
 int main(int argc, char **argv)
 {
-    enum { MODE_LEX, MODE_E1, MODE_PARSE, MODE_TREE } mode = MODE_PARSE;
-    for (int i = 1; i < argc; i++) {
-        if      (!strcmp(argv[i], "-l"))  mode = MODE_LEX;
-        else if (!strcmp(argv[i], "-e1")) mode = MODE_E1;
-        else if (!strcmp(argv[i], "-e2")) mode = MODE_PARSE;
-        else if (!strcmp(argv[i], "-t"))  mode = MODE_TREE;
+    int i;
+    int parse_status;
+    int mode = 2; /* 0: LEX, 1: E1, 2: PARSE, 3: TREE */
+
+    for (i = 1; i < argc; i++) {
+        if      (!strcmp(argv[i], "-l"))  mode = 0;
+        else if (!strcmp(argv[i], "-e1")) mode = 1;
+        else if (!strcmp(argv[i], "-e2")) mode = 2;
+        else if (!strcmp(argv[i], "-t"))  mode = 3;
     }
-    if (mode == MODE_LEX || mode == MODE_E1) {
-        print_tokens = (mode == MODE_LEX);
+    if (mode == 0 || mode == 1) {
+        print_tokens = (mode == 0);
         while (yylex() != 0) ;
         return 0;
     }
     print_tokens = 0;
-    yyparse();
-    if (mode == MODE_TREE && ast && syn_errs == 0)
+    parse_status = yyparse();
+    if (parse_status != 0 && lex_errs > 0) {
+        while (yylex() != 0) ;
+    }
+    if (mode == 3 && ast && syn_errs == 0)
         printast(ast);
     return 0;
 }
