@@ -376,9 +376,6 @@ parse_args_stmt:
             addchild($$, newnode(N_Identifier, $3));
             addchild($$, $5);
         }
-    /* Error recovery: bad index expression inside [...] */
-    | PARSEINT LPAR IDENTIFIER LSQ error RSQ RPAR
-        { $$ = NULL; }
     | PARSEINT LPAR error RPAR
         { $$ = NULL; }
     ;
@@ -431,19 +428,11 @@ op_expr:
             addchild($$, newnode(N_Identifier, $1));
             for (c = $3->children; c; c = c->next) addchild($$, c->node);
         }
-    /* Error recovery: bad call as expression */
-    | IDENTIFIER LPAR error RPAR
-        { $$ = NULL; }
     /* ParseArgs como expr */
     | PARSEINT LPAR IDENTIFIER LSQ expr RSQ RPAR
         { $$ = newnode(N_ParseArgs, NULL);
           addchild($$, newnode(N_Identifier, $3));
           addchild($$, $5); }
-    /* Error recovery: bad parseInt as expression */
-    | PARSEINT LPAR IDENTIFIER LSQ error RSQ RPAR
-        { $$ = NULL; }
-    | PARSEINT LPAR error RPAR
-        { $$ = NULL; }
 
     /* Unários */
     | MINUS op_expr %prec UMINUS

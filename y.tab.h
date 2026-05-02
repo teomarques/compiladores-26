@@ -171,7 +171,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 45 "jucompiler.y"
+#line 45 "/home/teomarques/Desktop/0_UC/0_2S2A/COMP/praticas/compiladores-26/jucompiler.y"
 
     char        *lexeme;
     struct node *n;
