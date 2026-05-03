@@ -33,7 +33,6 @@ int lex_errs = 0;
 
 int print_tokens = 0;
 
-extern int lex_error_count;
 
 int comment_start_line = 1;
 int comment_start_col = 1;
@@ -169,7 +168,6 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
     printf("Line %d, col %d: invalid escape sequence (%s)\n", syn_line, syn_column, yytext);
     lex_errs++;
     string_has_error = 1;
-    lex_error_count++;
 }
 
 <STR>\r\n|\r|\n {
@@ -246,16 +244,6 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 "public" { print_simple_token("PUBLIC"); return PUBLIC; }
 "return" { print_simple_token("RETURN"); return RETURN; }
 "static" { print_simple_token("STATIC"); return STATIC; }
-"String[]" {
-    /* Parser wants a single token so plain 'String' errors at 'String'.
-       Lexer-only mode (-l) historically prints STRING, LSQ, RSQ separately. */
-    if (print_tokens) {
-        print_simple_token("STRING");
-        print_simple_token("LSQ");
-        print_simple_token("RSQ");
-    }
-    return STRINGARRAY;
-}
 "String" { print_simple_token("STRING"); return STRING; }
 "void" { print_simple_token("VOID"); return VOID; }
 "while" { print_simple_token("WHILE"); return WHILE; }
