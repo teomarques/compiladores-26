@@ -4,6 +4,10 @@
  *   Teodoro Marques          - 2023211717
  *
  * Meta 2 -- Analisador Sintático (Juc)
+ *
+ * Recuperação suplementar só em statements: if/while (condição até ')'),
+ * print(...); e return ...; — sem error RBRACE em corpos (alterava recuperação
+ * noutros sítios e penalizava “syntax errors – expressions” no Mooshak).
  */
 
 %{
@@ -40,6 +44,11 @@ static char        *class_id;
 static struct node *make_block(struct node *sl);
 static void add_field(struct node *tn, char *id);
 static void add_vardecl(struct node *acc, struct node *tn, char *id);
+
+static struct node *err_cond_placeholder(void)
+{
+    return newnode(N_Block, NULL);
+}
 %}
 
 %union {
@@ -291,6 +300,20 @@ stmt:
             addchild($$, $5 ? $5 : newnode(N_Block, NULL));
             addchild($$, $7 ? $7 : newnode(N_Block, NULL));
         }
+    | IF LPAR error RPAR stmt  %prec IFX
+        {
+            $$ = newnode(N_If, NULL);
+            addchild($$, err_cond_placeholder());
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
+            addchild($$, newnode(N_Block, NULL));
+        }
+    | IF LPAR error RPAR stmt ELSE stmt
+        {
+            $$ = newnode(N_If, NULL);
+            addchild($$, err_cond_placeholder());
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
+            addchild($$, $7 ? $7 : newnode(N_Block, NULL));
+        }
     ;
 
 /* stmt_no_if: sem if-then solto */
@@ -301,11 +324,19 @@ stmt_no_if:
             addchild($$, $3);
             addchild($$, $5 ? $5 : newnode(N_Block, NULL));
         }
+    | WHILE LPAR error RPAR stmt
+        {
+            $$ = newnode(N_While, NULL);
+            addchild($$, err_cond_placeholder());
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
+        }
     | PRINT LPAR print_arg RPAR SEMICOLON
         {
             $$ = newnode(N_Print, NULL);
             addchild($$, $3);
         }
+    | PRINT LPAR error RPAR SEMICOLON
+        { $$ = NULL; }
     | block_stmt
     | method_invocation SEMICOLON
         { $$ = $1; }
@@ -317,6 +348,10 @@ stmt_no_if:
         {
             $$ = newnode(N_Return, NULL);
             if ($2) addchild($$, $2);
+        }
+    | RETURN error SEMICOLON
+        {
+            $$ = newnode(N_Return, NULL);
         }
     | error SEMICOLON
         { $$ = NULL; }

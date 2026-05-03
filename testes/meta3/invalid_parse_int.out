@@ -2,7 +2,7 @@ Line 10, col 26: Cannot find symbol undef
 Line 10, col 32: Cannot find symbol undef
 Line 10, col 9: Operator Integer.parseInt cannot be applied to types undef, undef
 Line 11, col 26: Cannot find symbol undef
-Line 11, col 9: Operator Integer.parseInt cannot be applied to types undef, none
+Line 11, col 9: Operator Integer.parseInt cannot be applied to types undef, int
 Line 12, col 26: Cannot find symbol undef
 Line 12, col 9: Operator Integer.parseInt cannot be applied to types undef, int
 Line 13, col 26: Cannot find symbol undef
@@ -56,9 +56,9 @@ Program
 ........Identifier(undef) - undef
 ......ParseArgs - int
 ........Identifier(undef) - undef
-........Lshift
-..........Natural(1)
-..........Natural(1)
+........Lshift - int
+..........Natural(1) - int
+..........Natural(1) - int
 ......ParseArgs - int
 ........Identifier(undef) - undef
 ........Natural(0) - int
