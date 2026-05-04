@@ -1,0 +1,40 @@
+===== Class TestClass Symbol Table =====
+x		int
+y		double
+
+main(int)	void
+
+===== Method main(int) Symbol Table =====
+return		void
+a		int
+b		double
+
+Program
+..Identifier(TestClass)
+..FieldDecl
+....Int
+....Identifier(x)
+..FieldDecl
+....Double
+....Identifier(y)
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(main)
+......MethodParams
+........ParamDecl
+..........StringArray
+..........Identifier(args)
+....MethodBody
+......VarDecl
+........Int
+........Identifier(a)
+......VarDecl
+........Double
+........Identifier(b)
+......Assign
+........Identifier(a)
+........Natural(10)
+......Assign
+........Identifier(b)
+........Decimal(3.14)
