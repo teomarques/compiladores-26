@@ -1,464 +1,386 @@
 /*
+ * Semantic Analyzer Implementation - Meta 3
  * Autores:
  *   Simão Tomás Botas Carvalho - 2021223055
  *   Teodoro Marques          - 2023211717
- *
- * Meta 3 -- Analisador Semântico
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 #include "semantic.h"
-#include "ast.h"
 
-/* ============================================================
- * HELPER MACROS
- * ============================================================ */
+extern const char *category_name[];
 
-#define INITIAL_CAPACITY 10
-
-/* ============================================================
- * SYMBOL TABLE IMPLEMENTATION
- * ============================================================ */
-
-class_table_t *create_class_table(const char *class_name)
+const char *jtype_to_string(JType t)
 {
-    class_table_t *table = (class_table_t *)malloc(sizeof(class_table_t));
-    if (!table) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
+    switch (t) {
+        case JT_INT: return "int";
+        case JT_DOUBLE: return "double";
+        case JT_BOOLEAN: return "boolean";
+        case JT_VOID: return "void";
+        case JT_STRING_ARRAY: return "String[]";
+        case JT_UNDEF: return "undef";
     }
-
-    table->class_name = (char *)malloc(strlen(class_name) + 1);
-    if (!table->class_name) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    strcpy(table->class_name, class_name);
-
-    table->fields = NULL;
-    table->methods = NULL;
-
-    return table;
+    return "unknown";
 }
 
-method_table_t *create_method_table(const char *name, type_t return_type)
+JType node_to_jtype(struct node *type_node)
 {
-    method_table_t *method = (method_table_t *)malloc(sizeof(method_table_t));
-    if (!method) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
+    if (!type_node) return JT_UNDEF;
+
+    switch (type_node->category) {
+        case N_Int: return JT_INT;
+        case N_Double: return JT_DOUBLE;
+        case N_Bool: return JT_BOOLEAN;
+        case N_Void: return JT_VOID;
+        case N_StringArray: return JT_STRING_ARRAY;
+        default: return JT_UNDEF;
     }
-
-    method->method_name = (char *)malloc(strlen(name) + 1);
-    if (!method->method_name) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    strcpy(method->method_name, name);
-
-    method->return_type = return_type;
-    method->params = NULL;
-    method->locals = NULL;
-    method->all = NULL;
-
-    return method;
 }
 
-void add_method_to_table(class_table_t *table, method_table_t *method)
+static int is_reserved_id(const char *name)
 {
-    method_list_t *new_method = (method_list_t *)malloc(sizeof(method_list_t));
-    if (!new_method) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-
-    new_method->method = method;
-    new_method->next = table->methods;
-    table->methods = new_method;
+    return (strcmp(name, "_") == 0) || (strcmp(name, "$") == 0);
 }
 
-void add_field_to_table(class_table_t *table, const char *name, type_t type, int is_array)
+static Symbol *find_symbol(Symbol *symbols, const char *name)
 {
-    symbol_list_t *new_sym = (symbol_list_t *)malloc(sizeof(symbol_list_t));
-    if (!new_sym) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
+    for (Symbol *s = symbols; s; s = s->next) {
+        if (strcmp(s->name, name) == 0) return s;
     }
-
-    symbol_t *sym = (symbol_t *)malloc(sizeof(symbol_t));
-    if (!sym) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-
-    sym->name = (char *)malloc(strlen(name) + 1);
-    if (!sym->name) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    strcpy(sym->name, name);
-
-    sym->type = type;
-    sym->is_array = is_array;
-    sym->is_param = 0;
-
-    new_sym->symbol = sym;
-    new_sym->next = table->fields;
-    table->fields = new_sym;
-}
-
-void add_param_to_method(method_table_t *method, const char *name, type_t type, int is_array)
-{
-    symbol_list_t *new_sym = (symbol_list_t *)malloc(sizeof(symbol_list_t));
-    if (!new_sym) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-
-    symbol_t *sym = (symbol_t *)malloc(sizeof(symbol_t));
-    if (!sym) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-
-    sym->name = (char *)malloc(strlen(name) + 1);
-    if (!sym->name) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    strcpy(sym->name, name);
-
-    sym->type = type;
-    sym->is_array = is_array;
-    sym->is_param = 1;
-
-    new_sym->symbol = sym;
-    new_sym->next = method->params;
-    method->params = new_sym;
-}
-
-void add_local_to_method(method_table_t *method, const char *name, type_t type, int is_array)
-{
-    symbol_list_t *new_sym = (symbol_list_t *)malloc(sizeof(symbol_list_t));
-    if (!new_sym) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-
-    symbol_t *sym = (symbol_t *)malloc(sizeof(symbol_t));
-    if (!sym) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-
-    sym->name = (char *)malloc(strlen(name) + 1);
-    if (!sym->name) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    strcpy(sym->name, name);
-
-    sym->type = type;
-    sym->is_array = is_array;
-    sym->is_param = 0;
-
-    new_sym->symbol = sym;
-    new_sym->next = method->locals;
-    method->locals = new_sym;
-}
-
-void add_return_to_method(method_table_t *method, type_t return_type)
-{
-    symbol_list_t *new_sym = (symbol_list_t *)malloc(sizeof(symbol_list_t));
-    if (!new_sym) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-
-    symbol_t *sym = (symbol_t *)malloc(sizeof(symbol_t));
-    if (!sym) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-
-    sym->name = (char *)malloc(strlen("return") + 1);
-    if (!sym->name) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    strcpy(sym->name, "return");
-
-    sym->type = return_type;
-    sym->is_array = 0;
-    sym->is_param = 0;
-
-    new_sym->symbol = sym;
-    new_sym->next = method->all;
-    method->all = new_sym;
-}
-
-symbol_t *lookup_symbol(method_table_t *method, const char *name)
-{
-    if (!method) return NULL;
-
-    /* Check all symbols (params + locals + return) */
-    symbol_list_t *list = method->all;
-    while (list) {
-        if (strcmp(list->symbol->name, name) == 0) {
-            return list->symbol;
-        }
-        list = list->next;
-    }
-
     return NULL;
 }
 
-symbol_t *lookup_field(class_table_t *table, const char *name)
+static void add_symbol(Symbol **symbols, const char *name, JType type, int is_param, int line, int col)
 {
-    if (!table) return NULL;
+    Symbol *s = malloc(sizeof(Symbol));
+    s->name = malloc(strlen(name) + 1);
+    strcpy(s->name, name);
+    s->type = type;
+    s->is_param = is_param;
+    s->line = line;
+    s->col = col;
+    s->next = NULL;
 
-    symbol_list_t *list = table->fields;
-    while (list) {
-        if (strcmp(list->symbol->name, name) == 0) {
-            return list->symbol;
-        }
-        list = list->next;
-    }
-
-    return NULL;
-}
-
-method_table_t *lookup_method(class_table_t *table, const char *name, int param_count)
-{
-    if (!table) return NULL;
-
-    method_list_t *list = table->methods;
-    while (list) {
-        if (strcmp(list->method->method_name, name) == 0) {
-            /* TODO: Check parameter count and types */
-            return list->method;
-        }
-        list = list->next;
-    }
-
-    return NULL;
-}
-
-/* ============================================================
- * TYPE SYSTEM FUNCTIONS
- * ============================================================ */
-
-const char *type_to_string(type_t type, int is_array)
-{
-    static char buffer[64];
-    const char *type_str;
-
-    switch (type) {
-        case TYPE_INT:
-            type_str = "int";
-            break;
-        case TYPE_DOUBLE:
-            type_str = "double";
-            break;
-        case TYPE_BOOL:
-            type_str = "boolean";
-            break;
-        case TYPE_STRING_ARRAY:
-            type_str = "String";
-            break;
-        case TYPE_VOID:
-            type_str = "void";
-            break;
-        case TYPE_UNDEF:
-            type_str = "undef";
-            break;
-        default:
-            type_str = "unknown";
-            break;
-    }
-
-    if (is_array) {
-        snprintf(buffer, sizeof(buffer), "%s []", type_str);
+    if (!*symbols) {
+        *symbols = s;
     } else {
-        snprintf(buffer, sizeof(buffer), "%s", type_str);
+        Symbol *tail = *symbols;
+        while (tail->next) tail = tail->next;
+        tail->next = s;
     }
-
-    return buffer;
 }
 
-int types_equal(type_t t1, type_t t2, int a1, int a2)
+static MethodEntry *find_method_by_signature(MethodEntry *methods, const char *name, int n_params)
 {
-    return (t1 == t2) && (a1 == a2);
-}
-
-int types_compatible(type_t actual, type_t expected, int actual_array, int expected_array)
-{
-    /* TODO: Implement type compatibility rules */
-    return types_equal(actual, expected, actual_array, expected_array);
-}
-
-/* ============================================================
- * AST ANNOTATION
- * ============================================================ */
-
-static node_annotation_t *annotations[10000]; /* TODO: Use a better data structure */
-static int annotation_count = 0;
-
-node_annotation_t *get_annotation(struct node *node)
-{
-    if (!node) return NULL;
-
-    /* TODO: Implement proper mapping from node pointer to annotation */
+    for (MethodEntry *m = methods; m; m = m->next) {
+        if (strcmp(m->name, name) == 0 && m->n_params == n_params) return m;
+    }
     return NULL;
 }
 
-void set_annotation(struct node *node, type_t type, int is_array)
+static void add_method(MethodEntry **methods, const char *name, JType return_type,
+                       JType *param_types, int n_params, int line, int col)
 {
-    if (!node) return;
+    MethodEntry *m = malloc(sizeof(MethodEntry));
+    m->name = malloc(strlen(name) + 1);
+    strcpy(m->name, name);
+    m->return_type = return_type;
+    m->n_params = n_params;
+    m->param_types = NULL;
+    if (n_params > 0) {
+        m->param_types = malloc(n_params * sizeof(JType));
+        memcpy(m->param_types, param_types, n_params * sizeof(JType));
+    }
+    m->symbols = NULL;
+    m->line = line;
+    m->col = col;
+    m->next = NULL;
 
-    if (annotation_count >= 10000) {
-        fprintf(stderr, "Annotation table full\n");
-        return;
+    if (!*methods) {
+        *methods = m;
+    } else {
+        MethodEntry *tail = *methods;
+        while (tail->next) tail = tail->next;
+        tail->next = m;
+    }
+}
+
+static JType extract_param_type(struct node *param_node)
+{
+    if (!param_node) return JT_UNDEF;
+    if (param_node->category == N_StringArray) return JT_STRING_ARRAY;
+    return node_to_jtype(param_node);
+}
+
+static void process_method_header(struct node *header, JType *ret_type,
+                                   char **method_name, JType **param_types, int *n_params)
+{
+    *ret_type = JT_UNDEF;
+    *method_name = NULL;
+    *param_types = NULL;
+    *n_params = 0;
+
+    if (!header || header->category != N_MethodHeader) return;
+
+    struct node_list *c = header->children;
+    if (c) c = c->next;  /* Skip sentinel */
+    if (!c || !c->node) return;
+
+    /* First child: return type */
+    *ret_type = node_to_jtype(c->node);
+    if (c->node->category == N_Void) *ret_type = JT_VOID;
+
+    /* Second child: identifier (method name) */
+    c = c->next;
+    if (c && c->node && c->node->category == N_Identifier) {
+        *method_name = c->node->token;
     }
 
-    node_annotation_t *ann = (node_annotation_t *)malloc(sizeof(node_annotation_t));
-    if (!ann) {
-        perror("malloc");
-        return;
+    /* Third child: MethodParams */
+    c = c->next;
+    if (c && c->node && c->node->category == N_MethodParams) {
+        struct node_list *pc = c->node->children;
+        if (pc) pc = pc->next;  /* Skip sentinel */
+        int count = 0;
+        for (struct node_list *tmp = pc; tmp && tmp->node; tmp = tmp->next) {
+            if (tmp->node->category == N_ParamDecl) count++;
+        }
+
+        if (count > 0) {
+            *param_types = malloc(count * sizeof(JType));
+            int idx = 0;
+            for (pc = c->node->children; pc && pc->node; pc = pc->next) {
+                if (pc->node->category == N_ParamDecl) {
+                    struct node_list *pd = pc->node->children;
+                    if (pd && pd->node) {
+                        (*param_types)[idx++] = extract_param_type(pd->node);
+                    }
+                }
+            }
+        }
+        *n_params = count;
+    }
+}
+
+ClassTable *build_symbol_tables(struct node *program)
+{
+    if (!program || program->category != N_Program) return NULL;
+
+    ClassTable *ct = malloc(sizeof(ClassTable));
+    ct->name = NULL;
+    ct->fields = NULL;
+    ct->methods = NULL;
+
+    /* First child is class Identifier (skip sentinel) */
+    struct node_list *c = program->children;
+    if (c) c = c->next;  /* Skip sentinel */
+    if (c && c->node && c->node->category == N_Identifier) {
+        if (c->node->token) {
+            ct->name = malloc(strlen(c->node->token) + 1);
+            strcpy(ct->name, c->node->token);
+        }
     }
 
-    ann->type = type;
-    ann->is_array = is_array;
+    /* Process FieldDecl and MethodDecl */
+    for (c = c->next; c; c = c->next) {
+        if (!c->node) {
+            continue;
+        }
 
-    /* TODO: Store annotation properly with node pointer mapping */
-    annotations[annotation_count++] = ann;
+        if (c->node->category == N_FieldDecl) {
+            struct node_list *fd = c->node->children;
+            if (fd) fd = fd->next;  /* Skip sentinel */
+            if (fd && fd->node && fd->next && fd->next->node) {
+                struct node *type_node = fd->node;
+                struct node *id_node = fd->next->node;
+
+                JType type = node_to_jtype(type_node);
+                const char *id = id_node->token;
+                int line = id_node->line;
+                int col = id_node->col;
+
+                if (is_reserved_id(id)) {
+                    printf("Line %d, col %d: Symbol %s is reserved\n", line, col, id);
+                } else if (find_symbol(ct->fields, id)) {
+                    printf("Line %d, col %d: Symbol %s already defined\n", line, col, id);
+                } else {
+                    add_symbol(&ct->fields, id, type, 0, line, col);
+                }
+            }
+        }
+        else if (c->node->category == N_MethodDecl) {
+            struct node_list *md = c->node->children;
+            if (md) md = md->next;  /* Skip sentinel */
+            if (md && md->node && md->node->category == N_MethodHeader) {
+                JType ret_type;
+                char *method_name;
+                JType *param_types;
+                int n_params;
+
+                process_method_header(md->node, &ret_type, &method_name, &param_types, &n_params);
+
+                if (method_name) {
+                    int method_line = md->node->line;
+                    int method_col = md->node->col;
+                    struct node_list *hdr_c = md->node->children;
+                    hdr_c = hdr_c->next;
+                    if (hdr_c && hdr_c->node && hdr_c->node->category == N_Identifier) {
+                        method_line = hdr_c->node->line;
+                        method_col = hdr_c->node->col;
+                    }
+
+                    MethodEntry *existing = find_method_by_signature(ct->methods, method_name, n_params);
+                    if (existing) {
+                        printf("Line %d, col %d: Symbol %s() already defined\n",
+                               method_line, method_col, method_name);
+                    } else {
+                        add_method(&ct->methods, method_name, ret_type, param_types, n_params,
+                                   method_line, method_col);
+
+                        MethodEntry *method = find_method_by_signature(ct->methods, method_name, n_params);
+                        if (method) {
+                            add_symbol(&method->symbols, "return", ret_type, 0, method_line, method_col);
+
+                            struct node_list *params = md->node->children;
+                            params = params->next;
+                            params = params->next;
+                            if (params && params->node && params->node->category == N_MethodParams) {
+                                for (struct node_list *pc = params->node->children; pc; pc = pc->next) {
+                                    if (pc->node && pc->node->category == N_ParamDecl) {
+                                        struct node_list *pd = pc->node->children;
+                                        if (pd) pd = pd->next;  /* Skip sentinel */
+                                        if (pd && pd->node && pd->next && pd->next->node) {
+                                            JType ptype = extract_param_type(pd->node);
+                                            const char *pname = pd->next->node->token;
+                                            int pline = pd->next->node->line;
+                                            int pcol = pd->next->node->col;
+
+                                            if (is_reserved_id(pname)) {
+                                                printf("Line %d, col %d: Symbol %s is reserved\n",
+                                                       pline, pcol, pname);
+                                            } else if (find_symbol(method->symbols, pname)) {
+                                                printf("Line %d, col %d: Symbol %s already defined\n",
+                                                       pline, pcol, pname);
+                                            } else {
+                                                add_symbol(&method->symbols, pname, ptype, 1,
+                                                           pline, pcol);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (md->next && md->next->node && md->next->node->category == N_MethodBody) {
+                                struct node_list *body = md->next->node->children;
+                                for (; body; body = body->next) {
+                                    if (body->node && body->node->category == N_VarDecl) {
+                                        struct node_list *vd = body->node->children;
+                                        if (vd) vd = vd->next;  /* Skip sentinel */
+                                        if (vd && vd->node && vd->next && vd->next->node) {
+                                            JType vtype = node_to_jtype(vd->node);
+                                            const char *vname = vd->next->node->token;
+                                            int vline = vd->next->node->line;
+                                            int vcol = vd->next->node->col;
+
+                                            if (is_reserved_id(vname)) {
+                                                printf("Line %d, col %d: Symbol %s is reserved\n",
+                                                       vline, vcol, vname);
+                                            } else if (find_symbol(method->symbols, vname)) {
+                                                printf("Line %d, col %d: Symbol %s already defined\n",
+                                                       vline, vcol, vname);
+                                            } else {
+                                                add_symbol(&method->symbols, vname, vtype, 0,
+                                                           vline, vcol);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (param_types) free(param_types);
+                }
+            }
+        }
+    }
+
+    return ct;
 }
 
-/* ============================================================
- * SEMANTIC ANALYSIS
- * ============================================================ */
-
-void semantic_analysis(struct node *root)
+void print_symbol_tables(ClassTable *ct)
 {
-    if (!root) return;
+    if (!ct || !ct->name) return;
 
-    /* Phase 1: Build symbol tables */
-    printf("Starting semantic analysis...\n");
+    printf("===== Class %s Symbol Table =====\n", ct->name);
 
-    /* Phase 2: Type checking and AST annotation */
-
-    /* Phase 3: Error reporting (already done incrementally) */
-}
-
-void annotate_ast(struct node *root, class_table_t *class_table)
-{
-    if (!root) return;
-
-    /* Traverse AST and annotate expression nodes with types */
-    /* TODO: Implement recursive traversal and annotation */
-}
-
-type_t get_node_type(struct node *node)
-{
-    if (!node) return TYPE_UNDEF;
-
-    /* TODO: Extract type from node annotation */
-    return TYPE_UNDEF;
-}
-
-/* ============================================================
- * ERROR REPORTING
- * ============================================================ */
-
-void semantic_error(int line, int col, const char *fmt, ...)
-{
-    va_list args;
-    printf("Line %d, col %d: ", line, col);
-
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
+    for (Symbol *f = ct->fields; f; f = f->next) {
+        printf("%s\t\t%s\n", f->name, jtype_to_string(f->type));
+    }
 
     printf("\n");
-}
 
-/* ============================================================
- * SYMBOL TABLE PRINTING
- * ============================================================ */
+    for (MethodEntry *m = ct->methods; m; m = m->next) {
+        printf("%s(", m->name);
+        for (int i = 0; i < m->n_params; i++) {
+            if (i > 0) printf(",");
+            printf("%s", jtype_to_string(m->param_types[i]));
+        }
+        printf(")\t%s\n", jtype_to_string(m->return_type));
+    }
 
-void print_class_table(class_table_t *table)
-{
-    if (!table) return;
+    printf("\n");
 
-    printf("===== Class %s Symbol Table =====\n", table->class_name);
+    for (MethodEntry *m = ct->methods; m; m = m->next) {
+        printf("===== Method %s(", m->name);
+        for (int i = 0; i < m->n_params; i++) {
+            if (i > 0) printf(",");
+            printf("%s", jtype_to_string(m->param_types[i]));
+        }
+        printf(") Symbol Table =====\n");
 
-    /* Print methods with their signatures */
-    method_list_t *method_list = table->methods;
-    while (method_list) {
-        printf("%s ( ", method_list->method->method_name);
-
-        /* Print parameter types */
-        symbol_list_t *param_list = method_list->method->params;
-        int first = 1;
-        while (param_list) {
-            if (!first) printf(", ");
-            printf("%s", type_to_string(param_list->symbol->type, param_list->symbol->is_array));
-            first = 0;
-            param_list = param_list->next;
+        for (Symbol *s = m->symbols; s; s = s->next) {
+            printf("%s\t\t%s", s->name, jtype_to_string(s->type));
+            if (s->is_param) printf("\tparam");
+            printf("\n");
         }
 
-        printf(") %s\n", type_to_string(method_list->method->return_type, 0));
-
-        method_list = method_list->next;
-    }
-}
-
-void print_method_table(class_table_t *class_table, method_table_t *method)
-{
-    if (!method) return;
-
-    printf("===== Method %s ( ", method->method_name);
-    
-    /* Print parameter types in signature */
-    symbol_list_t *param_list = method->params;
-    int first = 1;
-    while (param_list) {
-        if (!first) printf(", ");
-        printf("%s", type_to_string(param_list->symbol->type, param_list->symbol->is_array));
-        first = 0;
-        param_list = param_list->next;
-    }
-    printf(" ) Symbol Table =====\n");
-
-    /* Print all symbols in declaration order */
-    symbol_list_t *list = method->all;
-    while (list) {
-        printf("%s\t%s",
-               list->symbol->name,
-               type_to_string(list->symbol->type, list->symbol->is_array));
-
-        if (list->symbol->is_param) {
-            printf("\tparam");
-        }
         printf("\n");
-
-        list = list->next;
     }
 }
 
-/* ============================================================
- * CLEANUP
- * ============================================================ */
-
-void free_class_table(class_table_t *table)
+void free_class_table(ClassTable *ct)
 {
-    if (!table) return;
+    if (!ct) return;
 
-    /* TODO: Implement recursive cleanup of all structures */
+    Symbol *f = ct->fields;
+    while (f) {
+        Symbol *tmp = f;
+        f = f->next;
+        free(tmp->name);
+        free(tmp);
+    }
 
-    free(table->class_name);
-    free(table);
+    MethodEntry *m = ct->methods;
+    while (m) {
+        MethodEntry *tmp = m;
+        m = m->next;
+
+        Symbol *s = tmp->symbols;
+        while (s) {
+            Symbol *stmp = s;
+            s = s->next;
+            free(stmp->name);
+            free(stmp);
+        }
+
+        if (tmp->param_types) free(tmp->param_types);
+        free(tmp->name);
+        free(tmp);
+    }
+
+    if (ct->name) free(ct->name);
+    free(ct);
 }

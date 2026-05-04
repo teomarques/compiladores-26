@@ -11,11 +11,14 @@
 /* Definido em jucompiler.y */
 extern const char *category_name[];
 
-struct node *newnode(enum category category, char *token)
+struct node *newnode(enum category category, char *token, int line, int col)
 {
     struct node *n = malloc(sizeof(struct node));
     n->category = category;
-    n->token    = token;
+    n->token = token;
+    n->line = line;
+    n->col = col;
+    n->type_annot = NULL;
     n->children = malloc(sizeof(struct node_list));
     n->children->node = NULL;
     n->children->next = NULL;
@@ -43,6 +46,7 @@ static void printast_rec(struct node *n, int depth)
 
     printf("%s", category_name[n->category]);
     if (n->token) printf("(%s)", n->token);
+    if (n->type_annot) printf(" - %s", n->type_annot);
     printf("\n");
 
     for (c = n->children; c; c = c->next)

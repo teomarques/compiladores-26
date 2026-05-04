@@ -3,12 +3,10 @@
  *   Simão Tomás Botas Carvalho - 2021223055
  *   Teodoro Marques          - 2023211717
  *
- * Meta 2 -- Analisador Sintático (Juc)
- *
- * Recuperação suplementar só em statements: if/while (condição até ')'),
- * print(...); e return ...; — sem error RBRACE em corpos (alterava recuperação
- * noutros sítios e penalizava “syntax errors – expressions” no Mooshak).
+ * Meta 3 -- Semantic Analysis (Phase 1: Symbol Table)
  */
+
+%locations
 
 %{
 #include <stdio.h>
@@ -16,11 +14,8 @@
 #include <string.h>
 #include "ast.h"
 #include "semantic.h"
-#include "symbol_table.h"
-#include "type_checker.h"
-#include "error_handler.h"
 
-#define YYDEBUG 1
+#define YYDEBUG 0
 
 int  yylex(void);
 int  yyparse(void);
@@ -36,9 +31,8 @@ extern int  print_tokens;
 
 struct node *ast      = NULL;
 int          syn_errs = 0;
-int          skip_semantic = 0;
+ClassTable  *class_table = NULL;
 
-/* Globais para FieldDecl e VarDecl multi-ids */
 static struct node *cur_type_node;
 static struct node *cur_field_type;
 static struct node *prog_root;
@@ -47,12 +41,16 @@ static char        *vd_first_id;
 static char        *class_id;
 
 static struct node *make_block(struct node *sl);
-static void add_field(struct node *tn, char *id);
-static void add_vardecl(struct node *acc, struct node *tn, char *id);
+static struct node *type_node(enum category cat, int line, int col)
+{
+    return newnode(cat, NULL, line, col);
+}
+static void add_field(struct node *tn, char *id, int line, int col);
+static void add_vardecl(struct node *acc, struct node *tn, char *id, int line, int col);
 
 static struct node *err_cond_placeholder(void)
 {
-    return newnode(N_Block, NULL);
+    return newnode(N_Block, NULL, 0, 0);
 }
 %}
 
@@ -76,11 +74,9 @@ static struct node *err_cond_placeholder(void)
 %type <n> expr print_arg opt_expr block_stmt op_expr
 %type <n> call_args nonempty_call_args method_invocation assignment_expr parse_args_stmt
 
-/* Dangling-else */
 %nonassoc IFX
 %nonassoc ELSE
 
-/* Precedência dos operadores */
 %right ASSIGN
 %left OR
 %left AND
@@ -91,24 +87,20 @@ static struct node *err_cond_placeholder(void)
 %left PLUS MINUS
 %left STAR DIV MOD
 
-/* Unários */
 %nonassoc UPLUS UMINUS UNOT
 
 %%
 
-/* ============================================================
- * PROGRAM
- * ============================================================ */
 program:
       CLASS IDENTIFIER { class_id = $2; } LBRACE class_members RBRACE
         { ast = $5; }
     ;
 
 class_members:
-      /* vazio — cria Program com Identifier da classe */
+      /* vazio */
         {
-            $$ = newnode(N_Program, NULL);
-            addchild($$, newnode(N_Identifier, class_id));
+            $$ = newnode(N_Program, NULL, @$.first_line, @$.first_column);
+            addchild($$, newnode(N_Identifier, class_id, @$.first_line, @$.first_column));
             prog_root  = $$;
             vd_accum   = NULL;
         }
@@ -122,134 +114,109 @@ class_members:
         { $$ = $1; }
     ;
 
-/* ---- FieldDecl: type id { COMMA id } SEMICOLON ---- */
-/*
- * First alternative (type IDENTIFIER) creates the first FieldDecl,
- * saves the type node globally.
- * Recursive alternative uses saved type to create more FieldDecl
- * nodes for each additional identifier.
- */
 field_decl:
       type IDENTIFIER
         {
-            /* $<n>0 is unused — we store in global so recursive
-               rule can retrieve it. */
             cur_field_type = $1;
-            add_field($1, $2);
+            add_field($1, $2, @2.first_line, @2.first_column);
         }
       field_id_list SEMICOLON
     | error SEMICOLON
-                { }
+        { }
     ;
 
 field_id_list:
       /* vazio */
     | field_id_list COMMA IDENTIFIER
         {
-            add_field(cur_field_type, $3);
+            add_field(cur_field_type, $3, @3.first_line, @3.first_column);
         }
     ;
 
-/* ============================================================
- * METHOD DECLARATION
- * ============================================================ */
 method_decl:
       method_header method_body
         {
-            $$ = newnode(N_MethodDecl, NULL);
+            $$ = newnode(N_MethodDecl, NULL, @$.first_line, @$.first_column);
             addchild($$, $1);
             addchild($$, $2);
         }
     ;
 
-/* ============================================================
- * METHOD HEADER
- * ============================================================ */
 method_header:
       type IDENTIFIER LPAR formal_params RPAR
         {
-            $$ = newnode(N_MethodHeader, NULL);
+            $$ = newnode(N_MethodHeader, NULL, @$.first_line, @$.first_column);
             addchild($$, $1);
-            addchild($$, newnode(N_Identifier, $2));
+            addchild($$, newnode(N_Identifier, $2, @2.first_line, @2.first_column));
             addchild($$, $4);
         }
     | VOID IDENTIFIER LPAR formal_params RPAR
         {
-            $$ = newnode(N_MethodHeader, NULL);
-            addchild($$, newnode(N_Void, NULL));
-            addchild($$, newnode(N_Identifier, $2));
+            $$ = newnode(N_MethodHeader, NULL, @$.first_line, @$.first_column);
+            addchild($$, type_node(N_Void, @1.first_line, @1.first_column));
+            addchild($$, newnode(N_Identifier, $2, @2.first_line, @2.first_column));
             addchild($$, $4);
         }
     ;
 
-/* ============================================================
- * FORMAL PARAMS
- * ============================================================ */
 formal_params:
       fp_list
     | STRING LSQ RSQ IDENTIFIER
         {
-            struct node *pd = newnode(N_ParamDecl, NULL);
-            addchild(pd, newnode(N_StringArray, NULL));
-            addchild(pd, newnode(N_Identifier, $4));
-            $$ = newnode(N_MethodParams, NULL);
+            struct node *pd = newnode(N_ParamDecl, NULL, @$.first_line, @$.first_column);
+            addchild(pd, type_node(N_StringArray, @1.first_line, @1.first_column));
+            addchild(pd, newnode(N_Identifier, $4, @4.first_line, @4.first_column));
+            $$ = newnode(N_MethodParams, NULL, @$.first_line, @$.first_column);
             addchild($$, pd);
         }
-    | /* epsilon — empty params */
+    | /* epsilon */
         {
-            $$ = newnode(N_MethodParams, NULL);
+            $$ = newnode(N_MethodParams, NULL, yylloc.first_line, yylloc.first_column);
         }
     ;
 
 fp_list:
       type IDENTIFIER
         {
-            struct node *pd = newnode(N_ParamDecl, NULL);
+            struct node *pd = newnode(N_ParamDecl, NULL, @$.first_line, @$.first_column);
             addchild(pd, $1);
-            addchild(pd, newnode(N_Identifier, $2));
-            $$ = newnode(N_MethodParams, NULL);
+            addchild(pd, newnode(N_Identifier, $2, @2.first_line, @2.first_column));
+            $$ = newnode(N_MethodParams, NULL, @$.first_line, @$.first_column);
             addchild($$, pd);
         }
     | fp_list COMMA type IDENTIFIER
         {
-            struct node *pd = newnode(N_ParamDecl, NULL);
+            struct node *pd = newnode(N_ParamDecl, NULL, @3.first_line, @3.first_column);
             addchild(pd, $3);
-            addchild(pd, newnode(N_Identifier, $4));
+            addchild(pd, newnode(N_Identifier, $4, @4.first_line, @4.first_column));
             $$ = $1;
             addchild($$, pd);
         }
     ;
 
-/* ============================================================
- * TYPE
- * ============================================================ */
 type:
-      INT    { $$ = newnode(N_Int,    NULL); }
-    | DOUBLE { $$ = newnode(N_Double, NULL); }
-    | BOOL   { $$ = newnode(N_Bool,   NULL); }
+      INT    { $$ = type_node(N_Int,    @1.first_line, @1.first_column); }
+    | DOUBLE { $$ = type_node(N_Double, @1.first_line, @1.first_column); }
+    | BOOL   { $$ = type_node(N_Bool,   @1.first_line, @1.first_column); }
     ;
 
-/* ============================================================
- * METHOD BODY
- * ============================================================ */
 method_body:
       LBRACE stmt_list RBRACE
         {
             struct node_list *c;
-            $$ = newnode(N_MethodBody, NULL);
+            $$ = newnode(N_MethodBody, NULL, @$.first_line, @$.first_column);
             for (c = $2->children; c; c = c->next)
                 if (c->node) addchild($$, c->node);
         }
     ;
 
-/* ---- VarDecl: Type IDENTIFIER {COMMA IDENTIFIER} SEMICOLON ---- */
 var_decl:
       type IDENTIFIER
         {
             cur_type_node = $1;
             vd_first_id = $2;
-            vd_accum = newnode(N_MethodBody, NULL);
-            add_vardecl(vd_accum, cur_type_node, vd_first_id);
+            vd_accum = newnode(N_MethodBody, NULL, @$.first_line, @$.first_column);
+            add_vardecl(vd_accum, cur_type_node, vd_first_id, @2.first_line, @2.first_column);
         }
       vd_id_list SEMICOLON
         { $$ = vd_accum; }
@@ -259,15 +226,12 @@ vd_id_list:
       /* vazio */
     | vd_id_list COMMA IDENTIFIER
         {
-            add_vardecl(vd_accum, cur_type_node, $3);
+            add_vardecl(vd_accum, cur_type_node, $3, @3.first_line, @3.first_column);
         }
     ;
 
-/* ============================================================
- * STATEMENT LIST  (dentro do method_body)
- * ============================================================ */
 stmt_list:
-      /* vazio */   { $$ = newnode(N_MethodBody, NULL); }
+      /* vazio */   { $$ = newnode(N_MethodBody, NULL, yylloc.first_line, yylloc.first_column); }
     | stmt_list stmt
         {
             $$ = $1;
@@ -284,60 +248,54 @@ stmt_list:
         }
     ;
 
-/* ============================================================
- * STATEMENTS
- * ============================================================ */
-
-/* stmt: qualquer statement incluindo if-then sem else */
 stmt:
       stmt_no_if
     | IF LPAR expr RPAR stmt  %prec IFX
         {
-            $$ = newnode(N_If, NULL);
+            $$ = newnode(N_If, NULL, @1.first_line, @1.first_column);
             addchild($$, $3);
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
-            addchild($$, newnode(N_Block, NULL));
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
+            addchild($$, newnode(N_Block, NULL, @$.first_line, @$.first_column));
         }
     | IF LPAR expr RPAR stmt ELSE stmt
         {
-            $$ = newnode(N_If, NULL);
+            $$ = newnode(N_If, NULL, @1.first_line, @1.first_column);
             addchild($$, $3);
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
-            addchild($$, $7 ? $7 : newnode(N_Block, NULL));
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
+            addchild($$, $7 ? $7 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
         }
     | IF LPAR error RPAR stmt  %prec IFX
         {
-            $$ = newnode(N_If, NULL);
+            $$ = newnode(N_If, NULL, @1.first_line, @1.first_column);
             addchild($$, err_cond_placeholder());
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
-            addchild($$, newnode(N_Block, NULL));
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
+            addchild($$, newnode(N_Block, NULL, @$.first_line, @$.first_column));
         }
     | IF LPAR error RPAR stmt ELSE stmt
         {
-            $$ = newnode(N_If, NULL);
+            $$ = newnode(N_If, NULL, @1.first_line, @1.first_column);
             addchild($$, err_cond_placeholder());
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
-            addchild($$, $7 ? $7 : newnode(N_Block, NULL));
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
+            addchild($$, $7 ? $7 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
         }
     ;
 
-/* stmt_no_if: sem if-then solto */
 stmt_no_if:
     WHILE LPAR expr RPAR stmt
         {
-            $$ = newnode(N_While, NULL);
+            $$ = newnode(N_While, NULL, @1.first_line, @1.first_column);
             addchild($$, $3);
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
         }
     | WHILE LPAR error RPAR stmt
         {
-            $$ = newnode(N_While, NULL);
+            $$ = newnode(N_While, NULL, @1.first_line, @1.first_column);
             addchild($$, err_cond_placeholder());
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL));
+            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
         }
     | PRINT LPAR print_arg RPAR SEMICOLON
         {
-            $$ = newnode(N_Print, NULL);
+            $$ = newnode(N_Print, NULL, @1.first_line, @1.first_column);
             addchild($$, $3);
         }
     | PRINT LPAR error RPAR SEMICOLON
@@ -345,18 +303,18 @@ stmt_no_if:
     | block_stmt
     | method_invocation SEMICOLON
         { $$ = $1; }
-    | assignment_expr  SEMICOLON
+    | assignment_expr SEMICOLON
         { $$ = $1; }
-    | parse_args_stmt  SEMICOLON
+    | parse_args_stmt SEMICOLON
         { $$ = $1; }
     | RETURN opt_expr SEMICOLON
         {
-            $$ = newnode(N_Return, NULL);
+            $$ = newnode(N_Return, NULL, @1.first_line, @1.first_column);
             if ($2) addchild($$, $2);
         }
     | RETURN error SEMICOLON
         {
-            $$ = newnode(N_Return, NULL);
+            $$ = newnode(N_Return, NULL, @1.first_line, @1.first_column);
         }
     | error SEMICOLON
         { $$ = NULL; }
@@ -364,7 +322,6 @@ stmt_no_if:
         { $$ = NULL; }
     ;
 
-/* bloco partilhado entre stmt e stmt_no_if */
 block_stmt:
       LBRACE stmt_list RBRACE
         {
@@ -372,15 +329,12 @@ block_stmt:
         }
     ;
 
-/* ============================================================
- * MethodInvocation
- * ============================================================ */
 method_invocation:
       IDENTIFIER LPAR call_args RPAR
         {
-                        struct node_list *c;
-            $$ = newnode(N_Call, NULL);
-            addchild($$, newnode(N_Identifier, $1));
+            struct node_list *c;
+            $$ = newnode(N_Call, NULL, @1.first_line, @1.first_column);
+            addchild($$, newnode(N_Identifier, $1, @1.first_line, @1.first_column));
             for (c = $3->children; c; c = c->next) addchild($$, c->node);
         }
     | IDENTIFIER LPAR error RPAR
@@ -388,48 +342,38 @@ method_invocation:
     ;
 
 call_args:
-      /* vazio */       { $$ = newnode(N_MethodBody, NULL); }
+      /* vazio */       { $$ = newnode(N_MethodBody, NULL, yylloc.first_line, yylloc.first_column); }
     | nonempty_call_args  { $$ = $1; }
     ;
 
 nonempty_call_args:
-      expr              { $$ = newnode(N_MethodBody, NULL); addchild($$, $1); }
+      expr              { $$ = newnode(N_MethodBody, NULL, @$.first_line, @$.first_column); addchild($$, $1); }
     | nonempty_call_args COMMA expr
         { $$ = $1; addchild($$, $3); }
     ;
 
-/* ============================================================
- * Assignment
- * ============================================================ */
 assignment_expr:
       IDENTIFIER ASSIGN expr
         {
-            $$ = newnode(N_Assign, NULL);
-            addchild($$, newnode(N_Identifier, $1));
+            $$ = newnode(N_Assign, NULL, @2.first_line, @2.first_column);
+            addchild($$, newnode(N_Identifier, $1, @1.first_line, @1.first_column));
             addchild($$, $3);
         }
     ;
 
-/* ============================================================
- * ParseArgs
- * ============================================================ */
 parse_args_stmt:
       PARSEINT LPAR IDENTIFIER LSQ expr RSQ RPAR
         {
-            $$ = newnode(N_ParseArgs, NULL);
-            addchild($$, newnode(N_Identifier, $3));
+            $$ = newnode(N_ParseArgs, NULL, @1.first_line, @1.first_column);
+            addchild($$, newnode(N_Identifier, $3, @3.first_line, @3.first_column));
             addchild($$, $5);
         }
-    /* Error recovery: bad index expression inside [...] */
     | PARSEINT LPAR IDENTIFIER LSQ error RSQ RPAR
         { $$ = NULL; }
     | PARSEINT LPAR error RPAR
         { $$ = NULL; }
     ;
 
-/* ============================================================
- * Expressões auxiliares
- * ============================================================ */
 opt_expr:
       /* vazio */ { $$ = NULL; }
     | expr        { $$ = $1; }
@@ -437,12 +381,9 @@ opt_expr:
 
 print_arg:
       expr   { $$ = $1; }
-    | STRLIT { $$ = newnode(N_StrLit, $1); }
+    | STRLIT { $$ = newnode(N_StrLit, $1, @1.first_line, @1.first_column); }
     ;
 
-/* ============================================================
- * EXPRESSÕES
- * ============================================================ */
 expr:
       assignment_expr
         { $$ = $1; }
@@ -452,98 +393,78 @@ expr:
 
 op_expr:
       NATURAL
-        { $$ = newnode(N_Natural, $1); }
+        { $$ = newnode(N_Natural, $1, @1.first_line, @1.first_column); }
     | DECIMAL
-        { $$ = newnode(N_Decimal, $1); }
+        { $$ = newnode(N_Decimal, $1, @1.first_line, @1.first_column); }
     | BOOLLIT
-        { $$ = newnode(N_BoolLit, $1); }
-
+        { $$ = newnode(N_BoolLit, $1, @1.first_line, @1.first_column); }
     | LPAR expr RPAR  { $$ = $2; }
     | LPAR error RPAR { $$ = NULL; }
-
     | IDENTIFIER
-        { $$ = newnode(N_Identifier, $1); }
+        { $$ = newnode(N_Identifier, $1, @1.first_line, @1.first_column); }
     | IDENTIFIER DOTLENGTH
-        { $$ = newnode(N_Length, NULL);
-          addchild($$, newnode(N_Identifier, $1)); }
-
-    /* MethodInvocation como expr */
+        { $$ = newnode(N_Length, NULL, @2.first_line, @2.first_column);
+          addchild($$, newnode(N_Identifier, $1, @1.first_line, @1.first_column)); }
     | IDENTIFIER LPAR call_args RPAR
         {
             struct node_list *c;
-            $$ = newnode(N_Call, NULL);
-            addchild($$, newnode(N_Identifier, $1));
+            $$ = newnode(N_Call, NULL, @1.first_line, @1.first_column);
+            addchild($$, newnode(N_Identifier, $1, @1.first_line, @1.first_column));
             for (c = $3->children; c; c = c->next) addchild($$, c->node);
         }
-    /* Error recovery: bad call as expression */
     | IDENTIFIER LPAR error RPAR
         { $$ = NULL; }
-    /* ParseArgs como expr */
     | PARSEINT LPAR IDENTIFIER LSQ expr RSQ RPAR
-        { $$ = newnode(N_ParseArgs, NULL);
-          addchild($$, newnode(N_Identifier, $3));
+        { $$ = newnode(N_ParseArgs, NULL, @1.first_line, @1.first_column);
+          addchild($$, newnode(N_Identifier, $3, @3.first_line, @3.first_column));
           addchild($$, $5); }
-    /* Error recovery: bad parseInt as expression */
     | PARSEINT LPAR IDENTIFIER LSQ error RSQ RPAR
         { $$ = NULL; }
     | PARSEINT LPAR error RPAR
         { $$ = NULL; }
-
-    /* Unários */
     | MINUS op_expr %prec UMINUS
-        { $$ = newnode(N_Minus, NULL); addchild($$, $2); }
+        { $$ = newnode(N_Minus, NULL, @1.first_line, @1.first_column); addchild($$, $2); }
     | PLUS  op_expr %prec UPLUS
-        { $$ = newnode(N_Plus,  NULL); addchild($$, $2); }
+        { $$ = newnode(N_Plus,  NULL, @1.first_line, @1.first_column); addchild($$, $2); }
     | NOT   op_expr %prec UNOT
-        { $$ = newnode(N_Not,   NULL); addchild($$, $2); }
-
-    /* Binários */
-    | op_expr OR     op_expr  { $$ = newnode(N_Or,     NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr AND    op_expr  { $$ = newnode(N_And,    NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr XOR    op_expr  { $$ = newnode(N_Xor,    NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr EQ     op_expr  { $$ = newnode(N_Eq,     NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr NE     op_expr  { $$ = newnode(N_Ne,     NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr LT     op_expr  { $$ = newnode(N_Lt,     NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr GT     op_expr  { $$ = newnode(N_Gt,     NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr LE     op_expr  { $$ = newnode(N_Le,     NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr GE     op_expr  { $$ = newnode(N_Ge,     NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr LSHIFT op_expr  { $$ = newnode(N_Lshift, NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr RSHIFT op_expr  { $$ = newnode(N_Rshift, NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr PLUS   op_expr  { $$ = newnode(N_Add,    NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr MINUS  op_expr  { $$ = newnode(N_Sub,    NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr STAR   op_expr  { $$ = newnode(N_Mul,    NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr DIV    op_expr  { $$ = newnode(N_Div,    NULL); addchild($$, $1); addchild($$, $3); }
-    | op_expr MOD    op_expr  { $$ = newnode(N_Mod,    NULL); addchild($$, $1); addchild($$, $3); }
+        { $$ = newnode(N_Not,   NULL, @1.first_line, @1.first_column); addchild($$, $2); }
+    | op_expr OR     op_expr  { $$ = newnode(N_Or,     NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr AND    op_expr  { $$ = newnode(N_And,    NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr XOR    op_expr  { $$ = newnode(N_Xor,    NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr EQ     op_expr  { $$ = newnode(N_Eq,     NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr NE     op_expr  { $$ = newnode(N_Ne,     NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr LT     op_expr  { $$ = newnode(N_Lt,     NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr GT     op_expr  { $$ = newnode(N_Gt,     NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr LE     op_expr  { $$ = newnode(N_Le,     NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr GE     op_expr  { $$ = newnode(N_Ge,     NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr LSHIFT op_expr  { $$ = newnode(N_Lshift, NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr RSHIFT op_expr  { $$ = newnode(N_Rshift, NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr PLUS   op_expr  { $$ = newnode(N_Add,    NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr MINUS  op_expr  { $$ = newnode(N_Sub,    NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr STAR   op_expr  { $$ = newnode(N_Mul,    NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr DIV    op_expr  { $$ = newnode(N_Div,    NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
+    | op_expr MOD    op_expr  { $$ = newnode(N_Mod,    NULL, @2.first_line, @2.first_column); addchild($$, $1); addchild($$, $3); }
     ;
 
 %%
 
-/* ============================================================
- * Helper functions
- * ============================================================ */
-
-/* Cria FieldDecl(type, id) e adiciona ao prog_root */
-static void add_field(struct node *tn, char *id)
+static void add_field(struct node *tn, char *id, int line, int col)
 {
-    struct node *fd = newnode(N_FieldDecl, NULL);
+    struct node *fd = newnode(N_FieldDecl, NULL, line, col);
     addchild(fd, tn);
-    addchild(fd, newnode(N_Identifier, id));
+    addchild(fd, newnode(N_Identifier, id, line, col));
     addchild(prog_root, fd);
 }
 
-/* Cria VarDecl(type, id) e adiciona ao vd_accum */
-static void add_vardecl(struct node *acc, struct node *tn, char *id)
+static void add_vardecl(struct node *acc, struct node *tn, char *id, int line, int col)
 {
-    struct node *vd = newnode(N_VarDecl, NULL);
+    struct node *vd = newnode(N_VarDecl, NULL, line, col);
     addchild(vd, tn);
-    addchild(vd, newnode(N_Identifier, id));
+    addchild(vd, newnode(N_Identifier, id, line, col));
     if (acc)
         addchild(acc, vd);
 }
 
-/* ============================================================
- * NOMES DE CATEGORIAS
- * ============================================================ */
 const char *category_name[] = {
     "Program", "FieldDecl", "VarDecl", "MethodDecl",
     "MethodHeader", "MethodParams", "ParamDecl", "MethodBody",
@@ -555,9 +476,6 @@ const char *category_name[] = {
     "Identifier", "Natural", "Decimal", "BoolLit", "StrLit"
 };
 
-/* ============================================================
- * make_block
- * ============================================================ */
 static struct node *make_block(struct node *sl)
 {
     int nc = 0;
@@ -567,7 +485,7 @@ static struct node *make_block(struct node *sl)
     struct node *blk;
     struct node_list *c2;
 
-    if (!sl) return newnode(N_Block, NULL);
+    if (!sl) return newnode(N_Block, NULL, 0, 0);
 
     for (c = sl->children; c; c = c->next) {
         if (c->node) {
@@ -585,10 +503,10 @@ static struct node *make_block(struct node *sl)
         }
     }
     if (nc == 0)
-        return saw_any ? NULL : newnode(N_Block, NULL);
+        return saw_any ? NULL : newnode(N_Block, NULL, 0, 0);
     if (nc == 1) return single;
 
-    blk = newnode(N_Block, NULL);
+    blk = newnode(N_Block, NULL, 0, 0);
     for (c2 = sl->children; c2; c2 = c2->next) {
         if (c2->node) {
             int is_empty_block = 0;
@@ -604,9 +522,6 @@ static struct node *make_block(struct node *sl)
     return blk;
 }
 
-/* ============================================================
- * ERROR HANDLING
- * ============================================================ */
 void yyerror(const char *msg)
 {
     syn_errs++;
@@ -622,84 +537,37 @@ void yyerror(const char *msg)
                syn_line, syn_column);
 }
 
-/* ============================================================
- * MAIN
- * ============================================================ */
 int main(int argc, char **argv)
 {
     int i;
     int parse_status;
-    int mode = 2; /* 0: LEX, 1: E1, 2: PARSE, 3: TREE */
-    int print_syntax_tree = 0;
+    int mode = 2;
 
     for (i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "-l"))  mode = 0;
         else if (!strcmp(argv[i], "-e1")) mode = 1;
         else if (!strcmp(argv[i], "-e2")) mode = 2;
-        else if (!strcmp(argv[i], "-t"))  { mode = 3; skip_semantic = 1; }
-        else if (!strcmp(argv[i], "-s"))  print_syntax_tree = 1;
+        else if (!strcmp(argv[i], "-t"))  mode = 3;
+        else if (!strcmp(argv[i], "-s"))  mode = 4;
     }
-    
     if (mode == 0 || mode == 1) {
         print_tokens = (mode == 0);
         while (yylex() != 0) ;
         return 0;
     }
-    
     print_tokens = 0;
     parse_status = yyparse();
-    
     if (parse_status != 0 && lex_errs > 0) {
         while (yylex() != 0) ;
     }
-    
-    if (mode == 3 && ast && syn_errs == 0) {
-        if (print_syntax_tree)
-            printast(ast);
-        return 0;
-    }
-    
-    /* Phase 1: Build Symbol Tables */
-    if (ast && !skip_semantic && syn_errs == 0) {
-        class_table_t *class_table = NULL;
-        
-        /* Extract class name from AST root's first child (Identifier) */
-        if (ast->children && ast->children->node &&
-            ast->children->node->category == N_Identifier) {
-            char *class_name = ast->children->node->token;
-            class_table = create_class_table(class_name);
-
-            /* Build class symbol table (fields and methods) */
-            build_class_symbol_table(ast, class_table);
-            
-            /* Build method symbol tables (parameters and locals) */
-            build_method_symbol_tables(ast, class_table);
-
-            /* Output symbol tables if requested */
-            if (print_syntax_tree) {
-                print_class_table(class_table);
-                
-                /* Print method tables */
-                method_list_t *mlist = class_table->methods;
-                while (mlist) {
-                    printf("\n");
-                    print_method_table(class_table, mlist->method);
-                    mlist = mlist->next;
-                }
-                printf("\n");
-            }
-
-            /* Cleanup */
+    if (mode == 3 && ast && syn_errs == 0)
+        printast(ast);
+    if (mode == 4 && ast && syn_errs == 0) {
+        class_table = build_symbol_tables(ast);
+        if (class_table) {
+            print_symbol_tables(class_table);
             free_class_table(class_table);
         }
     }
-
-    /* Output annotated AST if requested */
-    if (print_syntax_tree && ast && syn_errs == 0) {
-        printf("\n");
-        printast(ast);
-    }
-
-    /* Return based on errors */
-    return (lex_errs > 0 || syn_errs > 0) ? 1 : 0;
+    return 0;
 }

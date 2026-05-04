@@ -1,0 +1,11 @@
+class TestClass {
+    public static int x;
+    public static double y;
+
+    public static void main(String[] args) {
+        int a;
+        double b;
+        a = 10;
+        b = 3.14;
+    }
+}

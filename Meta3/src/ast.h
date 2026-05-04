@@ -17,6 +17,8 @@ enum category {
 struct node {
     enum category category;
     char *token;
+    int line, col;
+    char *type_annot;  /* type annotation string (e.g., "int", "(int,double)", NULL) */
     struct node_list *children;
 };
 
@@ -25,7 +27,7 @@ struct node_list {
     struct node_list *next;
 };
 
-struct node *newnode(enum category category, char *token);
+struct node *newnode(enum category category, char *token, int line, int col);
 void addchild(struct node *parent, struct node *child);
 
 #endif
