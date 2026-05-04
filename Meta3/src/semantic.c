@@ -8,9 +8,61 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <limits.h>
 #include "semantic.h"
 
 extern const char *category_name[];
+
+static int check_natural_bounds(const char *text) {
+    /* Check if integer literal is within int range (0 to 2147483647) */
+    /* Remove underscores for comparison */
+    char clean[100];
+    int j = 0;
+    for (int i = 0; text[i]; i++) {
+        if (text[i] != '_') {
+            clean[j++] = text[i];
+        }
+    }
+    clean[j] = '\0';
+
+    /* Check if it's larger than INT_MAX (2147483647) */
+    if (j > 10) return 0; /* More than 10 digits, definitely out of bounds */
+    if (j == 10 && strcmp(clean, "2147483647") > 0) return 0;
+    return 1;
+}
+
+static int check_decimal_bounds(const char *text) {
+    /* Check if decimal literal is within valid double range */
+    /* First, remove underscores (Java allows them, strtod doesn't) */
+    char clean[1000];
+    int j = 0;
+    int has_digits = 0;
+    for (int i = 0; text[i] && j < (int)sizeof(clean) - 1; i++) {
+        if (text[i] != '_') {
+            clean[j++] = text[i];
+            if (text[i] >= '0' && text[i] <= '9') has_digits = 1;
+        }
+    }
+    clean[j] = '\0';
+
+    char *endptr;
+    double val = strtod(clean, &endptr);
+
+    /* strtod returns HUGE_VAL on overflow */
+    if (val == HUGE_VAL || val == -HUGE_VAL) return 0;
+
+    /* Check for underflow: if we have significant digits but got 0, it underflowed */
+    if (val == 0.0 && has_digits) {
+        /* Need to check if original string was non-zero */
+        /* If string contains non-zero digits and converted to 0, it's underflow */
+        for (int i = 0; clean[i]; i++) {
+            if (clean[i] >= '1' && clean[i] <= '9') return 0;  /* Non-zero digit found, underflowed */
+        }
+    }
+
+    return 1;
+}
 
 const char *jtype_to_string(JType t)
 {
@@ -72,6 +124,8 @@ static void add_symbol(Symbol **symbols, const char *name, JType type, int is_pa
     }
 }
 
+static int types_compatible(JType actual, JType expected); /* Forward declaration */
+
 static MethodEntry *find_method_by_signature(MethodEntry *methods, const char *name, int n_params)
 {
     for (MethodEntry *m = methods; m; m = m->next) {
@@ -80,8 +134,55 @@ static MethodEntry *find_method_by_signature(MethodEntry *methods, const char *n
     return NULL;
 }
 
-static void add_method(MethodEntry **methods, const char *name, JType return_type,
-                       JType *param_types, int n_params, int line, int col)
+static MethodEntry *find_exact_method(MethodEntry *methods, const char *name, int n_params,
+                                       JType *arg_types)
+{
+    /* Find a method with exact type match (all types must be equal) */
+    for (MethodEntry *m = methods; m; m = m->next) {
+        if (strcmp(m->name, name) == 0 && m->n_params == n_params) {
+            int exact = 1;
+            for (int i = 0; i < n_params; i++) {
+                if (arg_types[i] != m->param_types[i]) {
+                    exact = 0;
+                    break;
+                }
+            }
+            if (exact) return m;
+        }
+    }
+    return NULL;
+}
+
+static MethodEntry *find_compatible_method(MethodEntry *methods, const char *name, int n_params,
+                                           JType *arg_types, int *out_count)
+{
+    /* Find all methods with matching name and parameter count whose types are compatible */
+    MethodEntry *first_match = NULL;
+    int match_count = 0;
+
+    for (MethodEntry *m = methods; m; m = m->next) {
+        if (strcmp(m->name, name) == 0 && m->n_params == n_params) {
+            /* Check if all parameter types are compatible */
+            int compatible = 1;
+            for (int i = 0; i < n_params; i++) {
+                if (!types_compatible(arg_types[i], m->param_types[i])) {
+                    compatible = 0;
+                    break;
+                }
+            }
+            if (compatible) {
+                match_count++;
+                if (!first_match) first_match = m;
+            }
+        }
+    }
+
+    *out_count = match_count;
+    return first_match;
+}
+
+static MethodEntry *add_method(MethodEntry **methods, const char *name, JType return_type,
+                                JType *param_types, int n_params, int line, int col)
 {
     MethodEntry *m = malloc(sizeof(MethodEntry));
     m->name = malloc(strlen(name) + 1);
@@ -105,6 +206,8 @@ static void add_method(MethodEntry **methods, const char *name, JType return_typ
         while (tail->next) tail = tail->next;
         tail->next = m;
     }
+
+    return m;
 }
 
 static JType extract_param_type(struct node *param_node)
@@ -232,16 +335,27 @@ ClassTable *build_symbol_tables(struct node *program)
                         method_col = hdr_c->node->col;
                     }
 
+                    /* Check for exact duplicate: same name AND same parameter types */
                     MethodEntry *existing = find_method_by_signature(ct->methods, method_name, n_params);
-                    if (existing) {
-                        printf("Line %d, col %d: Symbol %s() already defined\n",
-                               method_line, method_col, method_name);
-                    } else {
-                        add_method(&ct->methods, method_name, ret_type, param_types, n_params,
-                                   method_line, method_col);
+                    int is_duplicate = 0;
+                    if (existing && n_params == existing->n_params) {
+                        int types_match = 1;
+                        for (int i = 0; i < n_params; i++) {
+                            if (param_types[i] != existing->param_types[i]) {
+                                types_match = 0;
+                                break;
+                            }
+                        }
+                        is_duplicate = types_match;
+                    }
 
-                        MethodEntry *method = find_method_by_signature(ct->methods, method_name, n_params);
-                        if (method) {
+                    MethodEntry *method = NULL;
+                    if (!is_duplicate) {
+                        method = add_method(&ct->methods, method_name, ret_type, param_types, n_params,
+                                            method_line, method_col);
+                    }
+
+                    if (method) {
                             add_symbol(&method->symbols, "return", ret_type, 0, method_line, method_col);
 
                             struct node_list *params = md->node->children;
@@ -275,8 +389,15 @@ ClassTable *build_symbol_tables(struct node *program)
                                     }
                                 }
                             }
+                        } else if (is_duplicate) {
+                            /* Report duplicate method error */
+                            printf("Line %d, col %d: Symbol %s(", method_line, method_col, method_name);
+                            for (int i = 0; i < n_params; i++) {
+                                if (i > 0) printf(",");
+                                printf("%s", jtype_to_string(param_types[i]));
+                            }
+                            printf(") already defined\n");
                         }
-                    }
 
                     if (param_types) free(param_types);
                 }
@@ -497,15 +618,25 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
     if (!n) return JT_UNDEF;
 
     switch (n->category) {
-        case N_Natural:
+        case N_Natural: {
+            /* Check bounds for natural number */
+            if (n->token && !check_natural_bounds(n->token)) {
+                printf("Line %d, col %d: Number %s out of bounds\n", n->line, n->col, n->token);
+            }
             n->type_annot = malloc(8);
             strcpy(n->type_annot, "int");
             return JT_INT;
+        }
 
-        case N_Decimal:
+        case N_Decimal: {
+            /* Check bounds for decimal number */
+            if (n->token && !check_decimal_bounds(n->token)) {
+                printf("Line %d, col %d: Number %s out of bounds\n", n->line, n->col, n->token);
+            }
             n->type_annot = malloc(8);
             strcpy(n->type_annot, "double");
             return JT_DOUBLE;
+        }
 
         case N_BoolLit:
             n->type_annot = malloc(8);
@@ -573,15 +704,30 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 }
             }
 
-            MethodEntry *called = find_method_by_signature(ct->methods, method_name, n_args);
+            /* First try exact match (all types must be exactly equal) across ALL methods */
+            MethodEntry *called = NULL;
+            if (n_args >= 0) {
+                called = find_exact_method(ct->methods, method_name, n_args, arg_types);
+            }
 
-            /* Check if parameter types match */
-            if (called && n_args > 0) {
-                for (int i = 0; i < n_args; i++) {
-                    if (!types_compatible(arg_types[i], called->param_types[i])) {
-                        called = NULL;
-                        break;
+            /* If no exact match, find all compatible methods */
+            int ambiguous = 0;
+            if (!called) {
+                int match_count = 0;
+                called = find_compatible_method(ct->methods, method_name, n_args, arg_types, &match_count);
+
+                /* Check for ambiguity */
+                if (match_count > 1) {
+                    printf("Line %d, col %d: Reference to method %s(", n->line, n->col, method_name ? method_name : "");
+                    for (int i = 0; i < n_args; i++) {
+                        if (i > 0) printf(",");
+                        printf("%s", jtype_to_string(arg_types[i]));
                     }
+                    printf(") is ambiguous\n");
+                    ambiguous = 1;
+                    called = NULL;
+                } else if (match_count == 0) {
+                    called = NULL;
                 }
             }
 
@@ -601,13 +747,23 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 strcpy(n->type_annot, jtype_to_string(called->return_type));
                 if (arg_types) free(arg_types);
                 return called->return_type;
-            } else {
+            } else if (!ambiguous) {
                 printf("Line %d, col %d: Cannot find symbol %s(", n->line, n->col, method_name ? method_name : "");
                 for (int i = 0; i < n_args; i++) {
                     if (i > 0) printf(",");
                     printf("%s", jtype_to_string(arg_types[i]));
                 }
                 printf(")\n");
+                if (method_id) {
+                    method_id->type_annot = malloc(8);
+                    strcpy(method_id->type_annot, "undef");
+                }
+                n->type_annot = malloc(8);
+                strcpy(n->type_annot, "undef");
+                if (arg_types) free(arg_types);
+                return JT_UNDEF;
+            } else {
+                /* Ambiguous call - set undef type but don't print error (already printed) */
                 if (method_id) {
                     method_id->type_annot = malloc(8);
                     strcpy(method_id->type_annot, "undef");

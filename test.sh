@@ -17,7 +17,7 @@ case $META in
     3)
         COMPILER="$BASE_DIR/meta3/jucompiler"
         TESTES=("$BASE_DIR/testes/meta3")
-        FLAGS="-c"
+        FLAGS="-s"
         ;;
     *)
         echo "Usage: $0 [1|2|3]"
