@@ -275,33 +275,6 @@ ClassTable *build_symbol_tables(struct node *program)
                                     }
                                 }
                             }
-
-                            if (md->next && md->next->node && md->next->node->category == N_MethodBody) {
-                                struct node_list *body = md->next->node->children;
-                                for (; body; body = body->next) {
-                                    if (body->node && body->node->category == N_VarDecl) {
-                                        struct node_list *vd = body->node->children;
-                                        if (vd) vd = vd->next;  /* Skip sentinel */
-                                        if (vd && vd->node && vd->next && vd->next->node) {
-                                            JType vtype = node_to_jtype(vd->node);
-                                            const char *vname = vd->next->node->token;
-                                            int vline = vd->next->node->line;
-                                            int vcol = vd->next->node->col;
-
-                                            if (is_reserved_id(vname)) {
-                                                printf("Line %d, col %d: Symbol %s is reserved\n",
-                                                       vline, vcol, vname);
-                                            } else if (find_symbol(method->symbols, vname)) {
-                                                printf("Line %d, col %d: Symbol %s already defined\n",
-                                                       vline, vcol, vname);
-                                            } else {
-                                                add_symbol(&method->symbols, vname, vtype, 0,
-                                                           vline, vcol);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
 
@@ -574,20 +547,16 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
             int n_args = 0;
             JType *arg_types = NULL;
 
-            if (c && c->node && c->node->category == N_MethodParams) {
-                struct node_list *args = c->node->children;
-                if (args) args = args->next;
+            /* Count arguments (direct children of Call node after method identifier) */
+            for (struct node_list *tmp = c; tmp && tmp->node; tmp = tmp->next) {
+                n_args++;
+            }
 
-                for (struct node_list *tmp = args; tmp && tmp->node; tmp = tmp->next) {
-                    n_args++;
-                }
-
-                if (n_args > 0) {
-                    arg_types = malloc(n_args * sizeof(JType));
-                    int idx = 0;
-                    for (args = c->node->children; args && args->node; args = args->next) {
-                        arg_types[idx++] = infer_type(args->node, method, ct);
-                    }
+            if (n_args > 0) {
+                arg_types = malloc(n_args * sizeof(JType));
+                int idx = 0;
+                for (struct node_list *args = c; args && args->node; args = args->next) {
+                    arg_types[idx++] = infer_type(args->node, method, ct);
                 }
             }
 
@@ -602,7 +571,12 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 if (arg_types) free(arg_types);
                 return called->return_type;
             } else {
-                printf("Line %d, col %d: Cannot find symbol %s()\n", n->line, n->col, method_name ? method_name : "");
+                printf("Line %d, col %d: Cannot find symbol %s(", n->line, n->col, method_name ? method_name : "");
+                for (int i = 0; i < n_args; i++) {
+                    if (i > 0) printf(",");
+                    printf("%s", jtype_to_string(arg_types[i]));
+                }
+                printf(")\n");
                 if (method_id) {
                     method_id->type_annot = malloc(8);
                     strcpy(method_id->type_annot, "undef");
@@ -612,6 +586,17 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 if (arg_types) free(arg_types);
                 return JT_UNDEF;
             }
+        }
+
+        case N_ParseArgs: {
+            struct node_list *c = n->children;
+            if (c) c = c->next;
+            if (c && c->node) infer_type(c->node, method, ct);
+            c = c && c->next ? c->next : NULL;
+            if (c && c->node) infer_type(c->node, method, ct);
+            n->type_annot = malloc(8);
+            strcpy(n->type_annot, "int");
+            return JT_INT;
         }
 
         case N_Assign: {
@@ -644,6 +629,29 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
 
     struct node_list *c;
     switch (n->category) {
+        case N_VarDecl: {
+            /* Add variable to method's symbol table when encountered */
+            c = n->children;
+            if (c) c = c->next;  /* Skip sentinel */
+            if (c && c->node && c->next && c->next->node) {
+                JType vtype = node_to_jtype(c->node);
+                const char *vname = c->next->node->token;
+                int vline = c->next->node->line;
+                int vcol = c->next->node->col;
+
+                if (is_reserved_id(vname)) {
+                    printf("Line %d, col %d: Symbol %s is reserved\n",
+                           vline, vcol, vname);
+                } else if (find_symbol(method->symbols, vname)) {
+                    printf("Line %d, col %d: Symbol %s already defined\n",
+                           vline, vcol, vname);
+                } else {
+                    add_symbol(&method->symbols, vname, vtype, 0, vline, vcol);
+                }
+            }
+            break;
+        }
+
         case N_If:
             c = n->children;
             if (c) c = c->next;
@@ -689,7 +697,13 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
         case N_Print:
             c = n->children;
             if (c) c = c->next;
-            if (c && c->node) infer_type(c->node, method, ct);
+            if (c && c->node) {
+                JType arg_type = infer_type(c->node, method, ct);
+                if (arg_type == JT_UNDEF || arg_type == JT_VOID) {
+                    printf("Line %d, col %d: Incompatible type %s in System.out.print statement\n",
+                           c->node->line, c->node->col, jtype_to_string(arg_type));
+                }
+            }
             break;
 
         case N_Assign:
