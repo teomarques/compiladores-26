@@ -400,7 +400,15 @@ void print_class_table(class_table_t *table)
     while (method_list) {
         printf("%s ( ", method_list->method->method_name);
 
-        /* TODO: Print parameter types */
+        /* Print parameter types */
+        symbol_list_t *param_list = method_list->method->params;
+        int first = 1;
+        while (param_list) {
+            if (!first) printf(", ");
+            printf("%s", type_to_string(param_list->symbol->type, param_list->symbol->is_array));
+            first = 0;
+            param_list = param_list->next;
+        }
 
         printf(") %s\n", type_to_string(method_list->method->return_type, 0));
 
@@ -412,7 +420,18 @@ void print_method_table(class_table_t *class_table, method_table_t *method)
 {
     if (!method) return;
 
-    printf("\n===== Method %s Symbol Table =====\n", method->method_name);
+    printf("===== Method %s ( ", method->method_name);
+    
+    /* Print parameter types in signature */
+    symbol_list_t *param_list = method->params;
+    int first = 1;
+    while (param_list) {
+        if (!first) printf(", ");
+        printf("%s", type_to_string(param_list->symbol->type, param_list->symbol->is_array));
+        first = 0;
+        param_list = param_list->next;
+    }
+    printf(" ) Symbol Table =====\n");
 
     /* Print all symbols in declaration order */
     symbol_list_t *list = method->all;

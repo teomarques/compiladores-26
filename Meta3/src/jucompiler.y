@@ -15,6 +15,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
+#include "semantic.h"
+#include "symbol_table.h"
+#include "type_checker.h"
+#include "error_handler.h"
 
 #define YYDEBUG 1
 
@@ -32,6 +36,7 @@ extern int  print_tokens;
 
 struct node *ast      = NULL;
 int          syn_errs = 0;
+int          skip_semantic = 0;
 
 /* Globais para FieldDecl e VarDecl multi-ids */
 static struct node *cur_type_node;
@@ -625,24 +630,76 @@ int main(int argc, char **argv)
     int i;
     int parse_status;
     int mode = 2; /* 0: LEX, 1: E1, 2: PARSE, 3: TREE */
+    int print_syntax_tree = 0;
 
     for (i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "-l"))  mode = 0;
         else if (!strcmp(argv[i], "-e1")) mode = 1;
         else if (!strcmp(argv[i], "-e2")) mode = 2;
-        else if (!strcmp(argv[i], "-t"))  mode = 3;
+        else if (!strcmp(argv[i], "-t"))  { mode = 3; skip_semantic = 1; }
+        else if (!strcmp(argv[i], "-s"))  print_syntax_tree = 1;
     }
+    
     if (mode == 0 || mode == 1) {
         print_tokens = (mode == 0);
         while (yylex() != 0) ;
         return 0;
     }
+    
     print_tokens = 0;
     parse_status = yyparse();
+    
     if (parse_status != 0 && lex_errs > 0) {
         while (yylex() != 0) ;
     }
-    if (mode == 3 && ast && syn_errs == 0)
+    
+    if (mode == 3 && ast && syn_errs == 0) {
+        if (print_syntax_tree)
+            printast(ast);
+        return 0;
+    }
+    
+    /* Phase 1: Build Symbol Tables */
+    if (ast && !skip_semantic && syn_errs == 0) {
+        class_table_t *class_table = NULL;
+        
+        /* Extract class name from AST root's first child (Identifier) */
+        if (ast->children && ast->children->node &&
+            ast->children->node->category == N_Identifier) {
+            char *class_name = ast->children->node->token;
+            class_table = create_class_table(class_name);
+
+            /* Build class symbol table (fields and methods) */
+            build_class_symbol_table(ast, class_table);
+            
+            /* Build method symbol tables (parameters and locals) */
+            build_method_symbol_tables(ast, class_table);
+
+            /* Output symbol tables if requested */
+            if (print_syntax_tree) {
+                print_class_table(class_table);
+                
+                /* Print method tables */
+                method_list_t *mlist = class_table->methods;
+                while (mlist) {
+                    printf("\n");
+                    print_method_table(class_table, mlist->method);
+                    mlist = mlist->next;
+                }
+                printf("\n");
+            }
+
+            /* Cleanup */
+            free_class_table(class_table);
+        }
+    }
+
+    /* Output annotated AST if requested */
+    if (print_syntax_tree && ast && syn_errs == 0) {
+        printf("\n");
         printast(ast);
-    return 0;
+    }
+
+    /* Return based on errors */
+    return (lex_errs > 0 || syn_errs > 0) ? 1 : 0;
 }

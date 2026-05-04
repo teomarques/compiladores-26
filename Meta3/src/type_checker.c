@@ -49,8 +49,43 @@ int is_binary_operator_valid(
     type_t right_type,
     int right_array)
 {
-    /* TODO: Implement full operator validation */
-    return 1;
+    /* Arrays not allowed in binary operations */
+    if (left_array || right_array) {
+        return 0;
+    }
+
+    /* Comparison operators: require numeric types on both sides */
+    if (strcmp(op, "<") == 0 || strcmp(op, ">") == 0 ||
+        strcmp(op, "<=") == 0 || strcmp(op, ">=") == 0) {
+        return (left_type == TYPE_INT || left_type == TYPE_DOUBLE) &&
+               (right_type == TYPE_INT || right_type == TYPE_DOUBLE);
+    }
+
+    /* Equality operators: both sides must be same type */
+    if (strcmp(op, "==") == 0 || strcmp(op, "!=") == 0) {
+        return types_equal(left_type, right_type, left_array, right_array);
+    }
+
+    /* Logical operators: both sides must be boolean */
+    if (strcmp(op, "&&") == 0 || strcmp(op, "||") == 0) {
+        return left_type == TYPE_BOOL && right_type == TYPE_BOOL;
+    }
+
+    /* Arithmetic operators: both sides must be numeric */
+    if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0 ||
+        strcmp(op, "*") == 0 || strcmp(op, "/") == 0 ||
+        strcmp(op, "%") == 0) {
+        return (left_type == TYPE_INT || left_type == TYPE_DOUBLE) &&
+               (right_type == TYPE_INT || right_type == TYPE_DOUBLE);
+    }
+
+    /* Bitwise operators: require integer types */
+    if (strcmp(op, "<<") == 0 || strcmp(op, ">>") == 0 ||
+        strcmp(op, "^") == 0) {
+        return left_type == TYPE_INT && right_type == TYPE_INT;
+    }
+
+    return 0;
 }
 
 type_t get_operation_result_type(
@@ -293,13 +328,16 @@ type_t check_expression(
         case N_Assign: {
             struct node_list *child = expr->children;
             if (child && child->node) {
-                int target_array = 0;
-                type_t target_type = check_expression(
+                /*  int target_array = 0;
+             type_t target_type = check_expression(
                     child->node,
                     class_table,
                     current_method,
                     &target_array
-                );
+                );  */
+
+                 /* For now, we only check the value type and annotate the assignment expression with it.
+                    Full type compatibility checks will be implemented later. */
 
                 child = child->next;
                 if (child && child->node) {
@@ -404,11 +442,4 @@ void check_method_body(
     class_table_t *class_table,
     method_table_t *method)
 {
-    if (!body || body->category != N_MethodBody) return;
-
-    struct node_list *child = body->children;
-    while (child && child->node) {
-        check_statement(child->node, class_table, method);
-        child = child->next;
-    }
-}
+    if (!body || body->category != N_Metho
