@@ -15,8 +15,17 @@
 #include "y.tab.h"
 
 /* Executado antes de cada ação do lexer:
- * guarda a posição inicial do token em syn_* e avança a coluna. */
-#define YY_USER_ACTION { syn_line = lex_line; syn_column = lex_column; lex_column += yyleng; }
+ * guarda a posição inicial do token em syn_* e avança a coluna.
+ * Também atualiza yylloc para rastrear localizações Yacc. */
+#define YY_USER_ACTION { \
+    yylloc.first_line = lex_line; \
+    yylloc.first_column = lex_column; \
+    syn_line = lex_line; \
+    syn_column = lex_column; \
+    lex_column += yyleng; \
+    yylloc.last_line = lex_line; \
+    yylloc.last_column = lex_column; \
+}
 
 /* Para tokens com valor (IDENTIFIER, NATURAL, DECIMAL, BOOLLIT, STRLIT, etc.)
  * assume-se que o %union no yacc tem o campo 'lexeme'. */

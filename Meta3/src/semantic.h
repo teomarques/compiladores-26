@@ -40,6 +40,7 @@ typedef struct {
 
 ClassTable *build_symbol_tables(struct node *program);
 void print_symbol_tables(ClassTable *ct);
+void check_and_annotate_ast(struct node *program, ClassTable *ct);
 void free_class_table(ClassTable *ct);
 
 const char *jtype_to_string(JType t);

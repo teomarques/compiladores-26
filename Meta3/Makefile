@@ -12,8 +12,6 @@ y.tab.c y.tab.h: src/jucompiler.y
 jucompiler: lex.yy.c y.tab.c src/ast.c src/semantic.c
 	$(CC) $(CFLAGS) -o jucompiler lex.yy.c y.tab.c src/ast.c src/semantic.c -lfl
 
-test: jucompiler
-	./jucompiler -s < test_simple.juc
 
 clean:
 	rm -f jucompiler lex.yy.c y.tab.c y.tab.h y.output y.gv *.o

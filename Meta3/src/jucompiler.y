@@ -549,6 +549,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-e2")) mode = 2;
         else if (!strcmp(argv[i], "-t"))  mode = 3;
         else if (!strcmp(argv[i], "-s"))  mode = 4;
+        else if (!strcmp(argv[i], "-c"))  mode = 5;
     }
     if (mode == 0 || mode == 1) {
         print_tokens = (mode == 0);
@@ -566,6 +567,15 @@ int main(int argc, char **argv)
         class_table = build_symbol_tables(ast);
         if (class_table) {
             print_symbol_tables(class_table);
+            free_class_table(class_table);
+        }
+    }
+    if (mode == 5 && ast && syn_errs == 0) {
+        class_table = build_symbol_tables(ast);
+        if (class_table) {
+            check_and_annotate_ast(ast, class_table);
+            print_symbol_tables(class_table);
+            printast(ast);
             free_class_table(class_table);
         }
     }

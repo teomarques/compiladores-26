@@ -151,9 +151,10 @@ static void process_method_header(struct node *header, JType *ret_type,
         if (count > 0) {
             *param_types = malloc(count * sizeof(JType));
             int idx = 0;
-            for (pc = c->node->children; pc && pc->node; pc = pc->next) {
-                if (pc->node->category == N_ParamDecl) {
+            for (pc = c->node->children; pc; pc = pc->next) {
+                if (pc->node && pc->node->category == N_ParamDecl) {
                     struct node_list *pd = pc->node->children;
+                    if (pd) pd = pd->next;  /* Skip sentinel */
                     if (pd && pd->node) {
                         (*param_types)[idx++] = extract_param_type(pd->node);
                     }
@@ -244,10 +245,13 @@ ClassTable *build_symbol_tables(struct node *program)
                             add_symbol(&method->symbols, "return", ret_type, 0, method_line, method_col);
 
                             struct node_list *params = md->node->children;
-                            params = params->next;
-                            params = params->next;
+                            params = params->next;  /* Skip sentinel */
+                            params = params->next;  /* Skip return type */
+                            params = params->next;  /* Skip method name identifier */
                             if (params && params->node && params->node->category == N_MethodParams) {
-                                for (struct node_list *pc = params->node->children; pc; pc = pc->next) {
+                                struct node_list *pc = params->node->children;
+                                if (pc) pc = pc->next;  /* Skip sentinel */
+                                for (; pc; pc = pc->next) {
                                     if (pc->node && pc->node->category == N_ParamDecl) {
                                         struct node_list *pd = pc->node->children;
                                         if (pd) pd = pd->next;  /* Skip sentinel */
@@ -315,15 +319,12 @@ void print_symbol_tables(ClassTable *ct)
     if (!ct || !ct->name) return;
 
     printf("===== Class %s Symbol Table =====\n", ct->name);
-
     for (Symbol *f = ct->fields; f; f = f->next) {
         printf("%s\t\t%s\n", f->name, jtype_to_string(f->type));
     }
 
-    printf("\n");
-
     for (MethodEntry *m = ct->methods; m; m = m->next) {
-        printf("%s(", m->name);
+        printf("%s\t(", m->name);
         for (int i = 0; i < m->n_params; i++) {
             if (i > 0) printf(",");
             printf("%s", jtype_to_string(m->param_types[i]));
@@ -383,4 +384,363 @@ void free_class_table(ClassTable *ct)
 
     if (ct->name) free(ct->name);
     free(ct);
+}
+
+static Symbol *lookup_symbol(const char *name, MethodEntry *method, ClassTable *ct)
+{
+    if (!method || !ct) return NULL;
+    if (find_symbol(method->symbols, name)) return find_symbol(method->symbols, name);
+    if (find_symbol(ct->fields, name)) return find_symbol(ct->fields, name);
+    return NULL;
+}
+
+static int types_compatible(JType actual, JType expected)
+{
+    if (actual == expected) return 1;
+    if (actual == JT_INT && expected == JT_DOUBLE) return 1;
+    return 0;
+}
+
+static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct);
+
+static JType check_binary_op(struct node *n, MethodEntry *method, ClassTable *ct)
+{
+    struct node_list *c = n->children;
+    if (c) c = c->next;
+
+    struct node *left = c && c->node ? c->node : NULL;
+    struct node *right = c && c->next && c->next->node ? c->next->node : NULL;
+
+    JType left_type = left ? infer_type(left, method, ct) : JT_UNDEF;
+    JType right_type = right ? infer_type(right, method, ct) : JT_UNDEF;
+
+    char left_str[32], right_str[32];
+    strcpy(left_str, jtype_to_string(left_type));
+    strcpy(right_str, jtype_to_string(right_type));
+
+    switch (n->category) {
+        case N_Add: case N_Sub: case N_Mul: case N_Div: case N_Mod:
+            if ((left_type == JT_INT || left_type == JT_DOUBLE) &&
+                (right_type == JT_INT || right_type == JT_DOUBLE)) {
+                return (left_type == JT_DOUBLE || right_type == JT_DOUBLE) ? JT_DOUBLE : JT_INT;
+            }
+            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                   n->line, n->col, n->category == N_Add ? "+" :
+                            n->category == N_Sub ? "-" :
+                            n->category == N_Mul ? "*" :
+                            n->category == N_Div ? "/" : "%", left_str, right_str);
+            return JT_UNDEF;
+
+        case N_Lt: case N_Gt: case N_Le: case N_Ge:
+            if ((left_type == JT_INT || left_type == JT_DOUBLE) &&
+                (right_type == JT_INT || right_type == JT_DOUBLE)) {
+                return JT_BOOLEAN;
+            }
+            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                   n->line, n->col, n->category == N_Lt ? "<" :
+                            n->category == N_Gt ? ">" :
+                            n->category == N_Le ? "<=" : ">=", left_str, right_str);
+            return JT_UNDEF;
+
+        case N_Eq: case N_Ne:
+            if (left_type != JT_UNDEF && right_type != JT_UNDEF &&
+                left_type != JT_VOID && right_type != JT_VOID) {
+                return JT_BOOLEAN;
+            }
+            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                   n->line, n->col, n->category == N_Eq ? "==" : "!=", left_str, right_str);
+            return JT_UNDEF;
+
+        case N_And: case N_Or:
+            if (left_type == JT_BOOLEAN && right_type == JT_BOOLEAN) {
+                return JT_BOOLEAN;
+            }
+            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                   n->line, n->col, n->category == N_And ? "&&" : "||", left_str, right_str);
+            return JT_UNDEF;
+
+        case N_Lshift: case N_Rshift: case N_Xor:
+            if (left_type == JT_INT && right_type == JT_INT) {
+                return JT_INT;
+            }
+            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                   n->line, n->col, n->category == N_Lshift ? "<<" :
+                            n->category == N_Rshift ? ">>" : "^", left_str, right_str);
+            return JT_UNDEF;
+
+        default:
+            return JT_UNDEF;
+    }
+}
+
+static JType check_unary_op(struct node *n, MethodEntry *method, ClassTable *ct)
+{
+    struct node_list *c = n->children;
+    if (c) c = c->next;
+    struct node *operand = c && c->node ? c->node : NULL;
+
+    JType op_type = operand ? infer_type(operand, method, ct) : JT_UNDEF;
+    char op_str[32];
+    strcpy(op_str, jtype_to_string(op_type));
+
+    switch (n->category) {
+        case N_Not:
+            if (op_type == JT_BOOLEAN) return JT_BOOLEAN;
+            printf("Line %d, col %d: Operator ! cannot be applied to type %s\n",
+                   n->line, n->col, op_str);
+            return JT_UNDEF;
+
+        case N_Minus: case N_Plus:
+            if (op_type == JT_INT || op_type == JT_DOUBLE) return op_type;
+            printf("Line %d, col %d: Operator %s cannot be applied to type %s\n",
+                   n->line, n->col, n->category == N_Minus ? "-" : "+", op_str);
+            return JT_UNDEF;
+
+        case N_Length:
+            if (op_type == JT_STRING_ARRAY) return JT_INT;
+            printf("Line %d, col %d: Operator .length cannot be applied to type %s\n",
+                   n->line, n->col, op_str);
+            return JT_UNDEF;
+
+        default:
+            return JT_UNDEF;
+    }
+}
+
+static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
+{
+    if (!n) return JT_UNDEF;
+
+    switch (n->category) {
+        case N_Natural:
+            n->type_annot = malloc(8);
+            strcpy(n->type_annot, "int");
+            return JT_INT;
+
+        case N_Decimal:
+            n->type_annot = malloc(8);
+            strcpy(n->type_annot, "double");
+            return JT_DOUBLE;
+
+        case N_BoolLit:
+            n->type_annot = malloc(8);
+            strcpy(n->type_annot, "boolean");
+            return JT_BOOLEAN;
+
+        case N_StrLit:
+            n->type_annot = malloc(8);
+            strcpy(n->type_annot, "String");
+            return JT_STRING_ARRAY;
+
+        case N_Identifier: {
+            Symbol *s = lookup_symbol(n->token, method, ct);
+            if (s) {
+                n->type_annot = malloc(16);
+                strcpy(n->type_annot, jtype_to_string(s->type));
+                return s->type;
+            } else {
+                printf("Line %d, col %d: Cannot find symbol %s\n", n->line, n->col, n->token);
+                n->type_annot = malloc(8);
+                strcpy(n->type_annot, "undef");
+                return JT_UNDEF;
+            }
+        }
+
+        case N_Add: case N_Sub: case N_Mul: case N_Div: case N_Mod:
+        case N_Lt: case N_Gt: case N_Le: case N_Ge:
+        case N_Eq: case N_Ne: case N_And: case N_Or:
+        case N_Lshift: case N_Rshift: case N_Xor: {
+            JType result = check_binary_op(n, method, ct);
+            n->type_annot = malloc(16);
+            strcpy(n->type_annot, jtype_to_string(result));
+            return result;
+        }
+
+        case N_Not: case N_Minus: case N_Plus: case N_Length: {
+            JType result = check_unary_op(n, method, ct);
+            n->type_annot = malloc(16);
+            strcpy(n->type_annot, jtype_to_string(result));
+            return result;
+        }
+
+        case N_Call: {
+            struct node_list *c = n->children;
+            if (c) c = c->next;
+
+            struct node *method_id = c && c->node ? c->node : NULL;
+            char *method_name = method_id ? method_id->token : NULL;
+            c = c && c->next ? c->next : NULL;
+
+            int n_args = 0;
+            JType *arg_types = NULL;
+
+            if (c && c->node && c->node->category == N_MethodParams) {
+                struct node_list *args = c->node->children;
+                if (args) args = args->next;
+
+                for (struct node_list *tmp = args; tmp && tmp->node; tmp = tmp->next) {
+                    n_args++;
+                }
+
+                if (n_args > 0) {
+                    arg_types = malloc(n_args * sizeof(JType));
+                    int idx = 0;
+                    for (args = c->node->children; args && args->node; args = args->next) {
+                        arg_types[idx++] = infer_type(args->node, method, ct);
+                    }
+                }
+            }
+
+            MethodEntry *called = find_method_by_signature(ct->methods, method_name, n_args);
+            if (called) {
+                if (method_id) {
+                    method_id->type_annot = malloc(16);
+                    strcpy(method_id->type_annot, jtype_to_string(called->return_type));
+                }
+                n->type_annot = malloc(16);
+                strcpy(n->type_annot, jtype_to_string(called->return_type));
+                if (arg_types) free(arg_types);
+                return called->return_type;
+            } else {
+                printf("Line %d, col %d: Cannot find symbol %s()\n", n->line, n->col, method_name ? method_name : "");
+                if (method_id) {
+                    method_id->type_annot = malloc(8);
+                    strcpy(method_id->type_annot, "undef");
+                }
+                n->type_annot = malloc(8);
+                strcpy(n->type_annot, "undef");
+                if (arg_types) free(arg_types);
+                return JT_UNDEF;
+            }
+        }
+
+        case N_Assign: {
+            struct node_list *c = n->children;
+            if (c) c = c->next;
+            struct node *lhs = c && c->node ? c->node : NULL;
+            struct node *rhs = c && c->next && c->next->node ? c->next->node : NULL;
+
+            JType lhs_type = lhs ? infer_type(lhs, method, ct) : JT_UNDEF;
+            JType rhs_type = rhs ? infer_type(rhs, method, ct) : JT_UNDEF;
+
+            if (!types_compatible(rhs_type, lhs_type)) {
+                printf("Line %d, col %d: Operator = cannot be applied to types %s, %s\n",
+                       n->line, n->col, jtype_to_string(lhs_type), jtype_to_string(rhs_type));
+            }
+
+            n->type_annot = malloc(16);
+            strcpy(n->type_annot, jtype_to_string(lhs_type));
+            return lhs_type;
+        }
+
+        default:
+            return JT_UNDEF;
+    }
+}
+
+static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
+{
+    if (!n) return;
+
+    struct node_list *c;
+    switch (n->category) {
+        case N_If:
+            c = n->children;
+            if (c) c = c->next;
+            if (c && c->node) {
+                JType cond_type = infer_type(c->node, method, ct);
+                if (cond_type != JT_BOOLEAN) {
+                    printf("Line %d, col %d: Incompatible type %s in if condition\n",
+                           c->node->line, c->node->col, jtype_to_string(cond_type));
+                }
+            }
+            c = c && c->next ? c->next : NULL;
+            if (c && c->node) check_statement(c->node, method, ct);
+            c = c && c->next ? c->next : NULL;
+            if (c && c->node) check_statement(c->node, method, ct);
+            break;
+
+        case N_While:
+            c = n->children;
+            if (c) c = c->next;
+            if (c && c->node) {
+                JType cond_type = infer_type(c->node, method, ct);
+                if (cond_type != JT_BOOLEAN) {
+                    printf("Line %d, col %d: Incompatible type %s in while condition\n",
+                           c->node->line, c->node->col, jtype_to_string(cond_type));
+                }
+            }
+            c = c && c->next ? c->next : NULL;
+            if (c && c->node) check_statement(c->node, method, ct);
+            break;
+
+        case N_Return:
+            c = n->children;
+            if (c) c = c->next;
+            if (c && c->node) {
+                JType ret_type = infer_type(c->node, method, ct);
+                if (method && !types_compatible(ret_type, method->return_type)) {
+                    printf("Line %d, col %d: Incompatible type %s in return statement\n",
+                           c->node->line, c->node->col, jtype_to_string(ret_type));
+                }
+            }
+            break;
+
+        case N_Print:
+            c = n->children;
+            if (c) c = c->next;
+            if (c && c->node) infer_type(c->node, method, ct);
+            break;
+
+        case N_Assign:
+        case N_Call:
+            infer_type(n, method, ct);
+            break;
+
+        case N_Block:
+            c = n->children;
+            if (c) c = c->next;
+            for (; c && c->node; c = c->next) {
+                check_statement(c->node, method, ct);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+void check_and_annotate_ast(struct node *program, ClassTable *ct)
+{
+    if (!program || !ct) return;
+
+    struct node_list *c = program->children;
+    if (c) c = c->next;
+    c = c && c->next ? c->next : NULL;
+
+    for (; c && c->node; c = c->next) {
+        if (c->node->category == N_MethodDecl) {
+            struct node_list *md = c->node->children;
+            if (md) md = md->next;
+            if (md && md->node && md->node->category == N_MethodHeader) {
+                JType ret_type;
+                char *method_name;
+                JType *param_types;
+                int n_params;
+
+                process_method_header(md->node, &ret_type, &method_name, &param_types, &n_params);
+                MethodEntry *method = find_method_by_signature(ct->methods, method_name, n_params);
+
+                if (method && md->next && md->next->node && md->next->node->category == N_MethodBody) {
+                    struct node_list *body = md->next->node->children;
+                    if (body) body = body->next;  /* Skip sentinel */
+                    for (; body && body->node; body = body->next) {
+                        check_statement(body->node, method, ct);
+                    }
+                }
+
+                if (param_types) free(param_types);
+            }
+        }
+    }
 }
