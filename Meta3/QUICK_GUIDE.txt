@@ -1,0 +1,242 @@
+================================================================================
+                    META 3 - SEMANTIC ANALYZER SCAFFOLDING
+                          QUICK INTEGRATION GUIDE
+================================================================================
+
+Welcome! 👋
+
+This folder contains everything you need to implement the semantic analyzer
+for Meta 3. All files are organized and ready to use.
+
+================================================================================
+WHAT'S IN THIS FOLDER
+================================================================================
+
+Meta3/
+├── QUICK_GUIDE.txt (this file)
+├── README.md
+│
+├── source_code/                    ← Copy these to your compiladores-26/ root
+│   ├── semantic.h
+│   ├── semantic.c
+│   ├── symbol_table.h
+│   ├── symbol_table.c
+│   ├── type_checker.h
+│   ├── type_checker.c
+│   ├── error_handler.h
+│   └── error_handler.c
+│
+└── documentation/                  ← Read these for guidance
+    ├── START_HERE.txt              ← Read this first!
+    ├── README_SCAFFOLD.md          (5 min overview)
+    ├── SEMANTIC_ANALYZER_SCAFFOLD.md (architecture)
+    ├── INTEGRATION_GUIDE.md        (step-by-step)
+    ├── DELIVERABLES.md            (checklist)
+    └── FILES_MANIFEST.txt         (detailed listing)
+
+================================================================================
+GETTING STARTED IN 5 STEPS
+================================================================================
+
+Step 1: READ
+  → Open: documentation/START_HERE.txt
+  ⏱️ Time: 5 minutes
+
+Step 2: COPY SOURCE FILES
+  → Copy all 8 files from source_code/ to your compiladores-26/ root directory
+  ⏱️ Time: 2 minutes
+
+Step 3: READ INTEGRATION GUIDE
+  → Open: documentation/INTEGRATION_GUIDE.md
+  ⏱️ Time: 15 minutes
+
+Step 4: UPDATE YOUR BUILD SYSTEM
+  → Modify Makefile (see INTEGRATION_GUIDE.md for exact changes)
+  → Modify jucompiler.y (see INTEGRATION_GUIDE.md for exact changes)
+  ⏱️ Time: 30 minutes
+
+Step 5: COMPILE AND TEST
+  → make clean && make
+  → ./jucompiler -s < testes/Factorial.java
+  ⏱️ Time: 1 hour
+
+================================================================================
+KEY FILES TO READ (IN ORDER)
+================================================================================
+
+1. documentation/START_HERE.txt
+   └─ Quick orientation and next steps (MUST READ FIRST)
+
+2. documentation/README_SCAFFOLD.md
+   └─ Overview of what you have and what you need to do
+
+3. documentation/SEMANTIC_ANALYZER_SCAFFOLD.md
+   └─ Detailed architecture and design explanation
+
+4. documentation/INTEGRATION_GUIDE.md
+   └─ Step-by-step instructions with code to copy-paste
+   └─ THIS IS THE MOST IMPORTANT FILE FOR INTEGRATION
+
+5. documentation/DELIVERABLES.md
+   └─ Complete checklist and reference during implementation
+
+6. documentation/FILES_MANIFEST.txt
+   └─ Detailed listing of all files and their purposes
+
+================================================================================
+WHAT THE SCAFFOLD PROVIDES
+================================================================================
+
+✅ 8 Source Code Files (~1,500 lines)
+   - Complete type system definition
+   - Symbol table data structures
+   - Function signatures ready for implementation
+   - Error handling framework
+   - 50% of the code structure complete
+
+✅ 6 Documentation Files (~1,200 lines)
+   - Complete architecture explanation
+   - Integration guide with copy-paste code
+   - Implementation roadmap
+   - Testing strategy
+
+✅ Ready-to-Use Features
+   - 3-phase analysis system (symbol tables → type checking → errors)
+   - Type system (6 types: int, double, bool, String[], void, undef)
+   - Symbol table hierarchy (class → method → symbol)
+   - Error reporting framework
+
+================================================================================
+WHAT YOU NEED TO IMPLEMENT
+================================================================================
+
+Phase 1: Symbol Table Building (4-6 hours)
+  • Complete AST traversal in symbol_table.c
+  • Extract all declarations (fields, methods, parameters, locals)
+  • Build symbol tables maintaining declaration order
+
+Phase 2: Type Checking (6-8 hours)
+  • Complete expression type inference in type_checker.c
+  • Add operator validation rules
+  • Annotate AST nodes with type information
+  • Handle method calls with parameter matching
+
+Phase 3: Integration & Testing (3-4 hours)
+  • Update Makefile with new compilation rules
+  • Add main() function to jucompiler.y
+  • Handle -t and -s command-line flags
+  • Test all functionality
+
+Total Estimated Time: 15-21 hours
+
+================================================================================
+NEXT IMMEDIATE STEPS
+================================================================================
+
+1. Open documentation/START_HERE.txt RIGHT NOW
+
+2. Follow the 5 Quick Start steps outlined there
+
+3. Begin with Phase 1 symbol table building
+
+4. Reference documentation as needed during implementation
+
+5. Test incrementally with your test cases
+
+================================================================================
+FILE COPY INSTRUCTIONS
+================================================================================
+
+After reading the documentation, copy the source files:
+
+From:   Meta3/source_code/
+To:     compiladores-26/ (your root project directory)
+
+Files to copy:
+  ✓ semantic.h
+  ✓ semantic.c
+  ✓ symbol_table.h
+  ✓ symbol_table.c
+  ✓ type_checker.h
+  ✓ type_checker.c
+  ✓ error_handler.h
+  ✓ error_handler.c
+
+After copying, your project structure should look like:
+
+  compiladores-26/
+  ├── Makefile (UPDATE THIS)
+  ├── jucompiler.y (MODIFY THIS)
+  ├── jucompiler.l
+  ├── ast.h
+  ├── ast.c
+  ├── semantic.h (NEW - copy from Meta3/source_code/)
+  ├── semantic.c (NEW - copy from Meta3/source_code/)
+  ├── symbol_table.h (NEW - copy from Meta3/source_code/)
+  ├── symbol_table.c (NEW - copy from Meta3/source_code/)
+  ├── type_checker.h (NEW - copy from Meta3/source_code/)
+  ├── type_checker.c (NEW - copy from Meta3/source_code/)
+  ├── error_handler.h (NEW - copy from Meta3/source_code/)
+  ├── error_handler.c (NEW - copy from Meta3/source_code/)
+  ├── Meta3/ (this folder - keep here for reference)
+  └── testes/
+
+================================================================================
+IMPORTANT REMINDERS
+================================================================================
+
+✓ Read START_HERE.txt first before doing anything else
+✓ Copy ALL 8 source files to your project root
+✓ Read INTEGRATION_GUIDE.md carefully before modifying Makefile/jucompiler.y
+✓ Implement in phases (don't try everything at once)
+✓ Test incrementally after each phase
+✓ Keep symbol table declaration order (don't sort alphabetically)
+✓ Use TYPE_UNDEF for error propagation
+
+================================================================================
+SUPPORT & TROUBLESHOOTING
+================================================================================
+
+If something doesn't work:
+
+1. Compilation errors?
+   → Check INTEGRATION_GUIDE.md "Common Integration Issues" section
+
+2. Symbol tables not printing?
+   → Check build_class_symbol_table() implementation in symbol_table.c
+   → Verify print_class_table() format matches specification
+
+3. Type checking not working?
+   → Start with literals first, then identifiers, then operations
+   → Test each operator type separately
+
+4. Output format wrong?
+   → Compare with examples in INTEGRATION_GUIDE.md
+   → Check printf format strings in print functions
+
+5. Need more details?
+   → Refer to the appropriate documentation file:
+     • Architecture: SEMANTIC_ANALYZER_SCAFFOLD.md
+     • Integration: INTEGRATION_GUIDE.md
+     • Checklist: DELIVERABLES.md
+     • Details: FILES_MANIFEST.txt
+
+================================================================================
+YOU'RE ALL SET! 🚀
+================================================================================
+
+Everything is ready. All scaffolding code is in place. All documentation is
+available. All you need to do now is:
+
+1. Read documentation/START_HERE.txt
+2. Copy source files to your project
+3. Start implementing the phases
+
+Good luck with your implementation!
+
+For questions or clarifications, refer to the comprehensive documentation
+files included in the documentation/ folder.
+
+Status: READY FOR DEVELOPMENT
+
+================================================================================
