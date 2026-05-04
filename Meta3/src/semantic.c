@@ -622,9 +622,26 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
         case N_ParseArgs: {
             struct node_list *c = n->children;
             if (c) c = c->next;
-            if (c && c->node) infer_type(c->node, method, ct);
+
+            JType arg1_type = JT_UNDEF;
+            JType arg2_type = JT_UNDEF;
+
+            if (c && c->node) {
+                arg1_type = infer_type(c->node, method, ct);
+            }
             c = c && c->next ? c->next : NULL;
-            if (c && c->node) infer_type(c->node, method, ct);
+            if (c && c->node) {
+                arg2_type = infer_type(c->node, method, ct);
+            }
+
+            /* Check argument types: first should be String[], second should be int
+               Report error if arg1 is undef OR if arg2 is not int */
+            if ((arg1_type == JT_UNDEF) ||
+                (arg2_type != JT_INT)) {
+                printf("Line %d, col %d: Operator Integer.parseInt cannot be applied to types %s, %s\n",
+                       n->line, n->col, jtype_to_string(arg1_type), jtype_to_string(arg2_type));
+            }
+
             n->type_annot = malloc(8);
             strcpy(n->type_annot, "int");
             return JT_INT;
@@ -639,11 +656,11 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
             JType lhs_type = lhs ? infer_type(lhs, method, ct) : JT_UNDEF;
             JType rhs_type = rhs ? infer_type(rhs, method, ct) : JT_UNDEF;
 
-            /* Check if lhs is a parameter (parameters are effectively final) */
+            /* Check if lhs is a String[] parameter (arrays cannot be reassigned) */
             int is_param_assign = 0;
             if (lhs && lhs->category == N_Identifier) {
                 Symbol *lhs_sym = lookup_symbol(lhs->token, method, ct);
-                if (lhs_sym && lhs_sym->is_param) {
+                if (lhs_sym && lhs_sym->is_param && lhs_sym->type == JT_STRING_ARRAY) {
                     is_param_assign = 1;
                     printf("Line %d, col %d: Operator = cannot be applied to types %s, %s\n",
                            n->line, n->col, jtype_to_string(lhs_type), jtype_to_string(rhs_type));
@@ -756,6 +773,7 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
 
         case N_Assign:
         case N_Call:
+        case N_ParseArgs:
             infer_type(n, method, ct);
             break;
 
