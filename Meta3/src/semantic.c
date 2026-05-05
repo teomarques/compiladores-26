@@ -355,13 +355,8 @@ ClassTable *build_symbol_tables(struct node *program)
                         method_col = hdr_c->node->col;
                     }
 
-                    /* Check for reserved method name */
-                    if (is_reserved_id(method_name)) {
-                        printf("Line %d, col %d: Symbol %s is reserved\n",
-                               method_line, method_col, method_name);
-                        if (param_types) free(param_types);
-                        continue;
-                    }
+                    /* Check for reserved method name (but don't report yet) */
+                    int reserved_method = is_reserved_id(method_name);
 
                     /* Check for exact duplicate: same name AND same parameter types */
                     MethodEntry *existing = find_method_by_signature(ct->methods, method_name, n_params);
@@ -378,12 +373,13 @@ ClassTable *build_symbol_tables(struct node *program)
                     }
 
                     MethodEntry *method = NULL;
-                    if (!is_duplicate) {
+                    if (!reserved_method && !is_duplicate) {
                         method = add_method(&ct->methods, method_name, ret_type, param_types, n_params,
                                             method_line, method_col);
                         if (method) add_class_entry(ct, CE_METHOD, NULL, method);
                     }
 
+                    /* Process parameters to check for errors FIRST (before reporting method errors) */
                     if (method) {
                             add_symbol(&method->symbols, "return", ret_type, 0, method_line, method_col);
 
@@ -418,8 +414,8 @@ ClassTable *build_symbol_tables(struct node *program)
                                     }
                                 }
                             }
-                        } else if (is_duplicate) {
-                            /* Process params with temp list to detect duplicate param names */
+                        } else if (reserved_method || is_duplicate) {
+                            /* Process params with temp list to detect duplicate param names even if method is reserved/duplicate */
                             Symbol *temp_symbols = NULL;
                             add_symbol(&temp_symbols, "return", ret_type, 0, method_line, method_col);
 
@@ -458,13 +454,18 @@ ClassTable *build_symbol_tables(struct node *program)
                                 free(tmp->name); free(tmp);
                             }
 
-                            /* Report duplicate method error */
-                            printf("Line %d, col %d: Symbol %s(", method_line, method_col, method_name);
-                            for (int i = 0; i < n_params; i++) {
-                                if (i > 0) printf(",");
-                                printf("%s", jtype_to_string(param_types[i]));
+                            /* Report method errors (reserved first, then duplicate only if not reserved) */
+                            if (reserved_method) {
+                                printf("Line %d, col %d: Symbol %s is reserved\n",
+                                       method_line, method_col, method_name);
+                            } else if (is_duplicate) {
+                                printf("Line %d, col %d: Symbol %s(", method_line, method_col, method_name);
+                                for (int i = 0; i < n_params; i++) {
+                                    if (i > 0) printf(",");
+                                    printf("%s", jtype_to_string(param_types[i]));
+                                }
+                                printf(") already defined\n");
                             }
-                            printf(") already defined\n");
                         }
 
                     if (param_types) free(param_types);
@@ -648,7 +649,7 @@ static JType check_binary_op(struct node *n, MethodEntry *method, ClassTable *ct
             printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
                    n->line, n->col, n->category == N_Lshift ? "<<" :
                             n->category == N_Rshift ? ">>" : "^", left_str, right_str);
-            return JT_INT;
+            return JT_UNDEF;
 
         default:
             return JT_UNDEF;
@@ -929,7 +930,8 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 }
             }
 
-            if (!is_param_assign && !types_compatible(rhs_type, lhs_type)) {
+            /* Report error if either operand is undef or types are incompatible */
+            if (!is_param_assign && (lhs_type == JT_UNDEF || rhs_type == JT_UNDEF || !types_compatible(rhs_type, lhs_type))) {
                 printf("Line %d, col %d: Operator = cannot be applied to types %s, %s\n",
                        n->line, n->col, jtype_to_string(lhs_type), jtype_to_string(rhs_type));
             }
