@@ -17,9 +17,9 @@ extern const char *category_name[];
 static int check_natural_bounds(const char *text) {
     /* Check if integer literal is within int range (0 to 2147483647) */
     /* Remove underscores for comparison */
-    char clean[100];
+    char clean[32];
     int j = 0;
-    for (int i = 0; text[i]; i++) {
+    for (int i = 0; text[i] && j < 20; i++) {
         if (text[i] != '_') {
             clean[j++] = text[i];
         }
@@ -353,6 +353,14 @@ ClassTable *build_symbol_tables(struct node *program)
                     if (hdr_c && hdr_c->node && hdr_c->node->category == N_Identifier) {
                         method_line = hdr_c->node->line;
                         method_col = hdr_c->node->col;
+                    }
+
+                    /* Check for reserved method name */
+                    if (is_reserved_id(method_name)) {
+                        printf("Line %d, col %d: Symbol %s is reserved\n",
+                               method_line, method_col, method_name);
+                        if (param_types) free(param_types);
+                        continue;
                     }
 
                     /* Check for exact duplicate: same name AND same parameter types */
@@ -717,6 +725,12 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
             return JT_STRING;
 
         case N_Identifier: {
+            if (is_reserved_id(n->token)) {
+                printf("Line %d, col %d: Symbol %s is reserved\n", n->line, n->col, n->token);
+                n->type_annot = malloc(8);
+                strcpy(n->type_annot, "undef");
+                return JT_UNDEF;
+            }
             Symbol *s = lookup_symbol(n->token, method, ct);
             if (s) {
                 n->type_annot = malloc(16);
@@ -753,6 +767,26 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
 
             struct node *method_id = c && c->node ? c->node : NULL;
             char *method_name = method_id ? method_id->token : NULL;
+
+            /* Check for reserved method name */
+            if (method_name && is_reserved_id(method_name)) {
+                printf("Line %d, col %d: Symbol %s is reserved\n",
+                       n->line, n->col, method_name);
+                if (method_id) {
+                    method_id->type_annot = malloc(8);
+                    strcpy(method_id->type_annot, "undef");
+                }
+                n->type_annot = malloc(8);
+                strcpy(n->type_annot, "undef");
+                /* Still need to infer types of arguments for annotation */
+                c = c && c->next ? c->next : NULL;
+                if (c && !c->node) c = c->next;
+                for (struct node_list *args = c; args; args = args->next) {
+                    if (args->node) infer_type(args->node, method, ct);
+                }
+                return JT_UNDEF;
+            }
+
             c = c && c->next ? c->next : NULL;
             if (c && !c->node) c = c->next;  /* Skip NULL from call_args sentinel if present */
 
@@ -801,15 +835,21 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
 
             if (called) {
                 if (method_id) {
-                    /* Format method signature for identifier annotation */
-                    char sig[256] = "(";
+                    /* Format method signature for identifier annotation (dynamic allocation) */
+                    int sig_len = 2; /* "(" + ")" */
+                    for (int i = 0; i < called->n_params; i++) {
+                        if (i > 0) sig_len++; /* comma */
+                        sig_len += (int)strlen(jtype_to_string(called->param_types[i]));
+                    }
+                    char *sig = malloc(sig_len + 1);
+                    sig[0] = '(';
+                    sig[1] = '\0';
                     for (int i = 0; i < called->n_params; i++) {
                         if (i > 0) strcat(sig, ",");
                         strcat(sig, jtype_to_string(called->param_types[i]));
                     }
                     strcat(sig, ")");
-                    method_id->type_annot = malloc(strlen(sig) + 1);
-                    strcpy(method_id->type_annot, sig);
+                    method_id->type_annot = sig;
                 }
                 n->type_annot = malloc(16);
                 strcpy(n->type_annot, jtype_to_string(called->return_type));
