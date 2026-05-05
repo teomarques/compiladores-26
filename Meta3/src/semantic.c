@@ -72,6 +72,7 @@ const char *jtype_to_string(JType t)
         case JT_BOOLEAN: return "boolean";
         case JT_VOID: return "void";
         case JT_STRING_ARRAY: return "String[]";
+        case JT_STRING: return "String";
         case JT_UNDEF: return "undef";
     }
     return "unknown";
@@ -181,6 +182,22 @@ static MethodEntry *find_compatible_method(MethodEntry *methods, const char *nam
     return first_match;
 }
 
+static void add_class_entry(ClassTable *ct, ClassEntryKind kind, Symbol *field, MethodEntry *method)
+{
+    ClassEntryNode *en = malloc(sizeof(ClassEntryNode));
+    en->kind = kind;
+    if (kind == CE_FIELD) en->field = field;
+    else en->method = method;
+    en->next = NULL;
+    if (!ct->entries) {
+        ct->entries = en;
+    } else {
+        ClassEntryNode *tail = ct->entries;
+        while (tail->next) tail = tail->next;
+        tail->next = en;
+    }
+}
+
 static MethodEntry *add_method(MethodEntry **methods, const char *name, JType return_type,
                                 JType *param_types, int n_params, int line, int col)
 {
@@ -276,6 +293,7 @@ ClassTable *build_symbol_tables(struct node *program)
     ct->name = NULL;
     ct->fields = NULL;
     ct->methods = NULL;
+    ct->entries = NULL;
 
     /* First child is class Identifier (skip sentinel) */
     struct node_list *c = program->children;
@@ -311,6 +329,7 @@ ClassTable *build_symbol_tables(struct node *program)
                     printf("Line %d, col %d: Symbol %s already defined\n", line, col, id);
                 } else {
                     add_symbol(&ct->fields, id, type, 0, line, col);
+                    add_class_entry(ct, CE_FIELD, find_symbol(ct->fields, id), NULL);
                 }
             }
         }
@@ -329,7 +348,8 @@ ClassTable *build_symbol_tables(struct node *program)
                     int method_line = md->node->line;
                     int method_col = md->node->col;
                     struct node_list *hdr_c = md->node->children;
-                    hdr_c = hdr_c->next;
+                    if (hdr_c) hdr_c = hdr_c->next;  /* Skip sentinel */
+                    if (hdr_c) hdr_c = hdr_c->next;  /* Skip return type */
                     if (hdr_c && hdr_c->node && hdr_c->node->category == N_Identifier) {
                         method_line = hdr_c->node->line;
                         method_col = hdr_c->node->col;
@@ -353,6 +373,7 @@ ClassTable *build_symbol_tables(struct node *program)
                     if (!is_duplicate) {
                         method = add_method(&ct->methods, method_name, ret_type, param_types, n_params,
                                             method_line, method_col);
+                        if (method) add_class_entry(ct, CE_METHOD, NULL, method);
                     }
 
                     if (method) {
@@ -390,6 +411,45 @@ ClassTable *build_symbol_tables(struct node *program)
                                 }
                             }
                         } else if (is_duplicate) {
+                            /* Process params with temp list to detect duplicate param names */
+                            Symbol *temp_symbols = NULL;
+                            add_symbol(&temp_symbols, "return", ret_type, 0, method_line, method_col);
+
+                            struct node_list *params = md->node->children;
+                            params = params->next;  /* Skip sentinel */
+                            params = params->next;  /* Skip return type */
+                            params = params->next;  /* Skip method name identifier */
+                            if (params && params->node && params->node->category == N_MethodParams) {
+                                struct node_list *pc = params->node->children;
+                                if (pc) pc = pc->next;  /* Skip sentinel */
+                                for (; pc; pc = pc->next) {
+                                    if (pc->node && pc->node->category == N_ParamDecl) {
+                                        struct node_list *pd = pc->node->children;
+                                        if (pd) pd = pd->next;  /* Skip sentinel */
+                                        if (pd && pd->node && pd->next && pd->next->node) {
+                                            JType ptype = extract_param_type(pd->node);
+                                            const char *pname = pd->next->node->token;
+                                            int pline = pd->next->node->line;
+                                            int pcol = pd->next->node->col;
+                                            if (is_reserved_id(pname)) {
+                                                printf("Line %d, col %d: Symbol %s is reserved\n", pline, pcol, pname);
+                                            } else if (find_symbol(temp_symbols, pname)) {
+                                                printf("Line %d, col %d: Symbol %s already defined\n", pline, pcol, pname);
+                                            } else {
+                                                add_symbol(&temp_symbols, pname, ptype, 1, pline, pcol);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            /* Free temp symbols */
+                            while (temp_symbols) {
+                                Symbol *tmp = temp_symbols;
+                                temp_symbols = temp_symbols->next;
+                                free(tmp->name); free(tmp);
+                            }
+
                             /* Report duplicate method error */
                             printf("Line %d, col %d: Symbol %s(", method_line, method_col, method_name);
                             for (int i = 0; i < n_params; i++) {
@@ -413,17 +473,18 @@ void print_symbol_tables(ClassTable *ct)
     if (!ct || !ct->name) return;
 
     printf("===== Class %s Symbol Table =====\n", ct->name);
-    for (Symbol *f = ct->fields; f; f = f->next) {
-        printf("%s\t\t%s\n", f->name, jtype_to_string(f->type));
-    }
-
-    for (MethodEntry *m = ct->methods; m; m = m->next) {
-        printf("%s\t(", m->name);
-        for (int i = 0; i < m->n_params; i++) {
-            if (i > 0) printf(",");
-            printf("%s", jtype_to_string(m->param_types[i]));
+    for (ClassEntryNode *e = ct->entries; e; e = e->next) {
+        if (e->kind == CE_FIELD) {
+            printf("%s\t\t%s\n", e->field->name, jtype_to_string(e->field->type));
+        } else {
+            MethodEntry *m = e->method;
+            printf("%s\t(", m->name);
+            for (int i = 0; i < m->n_params; i++) {
+                if (i > 0) printf(",");
+                printf("%s", jtype_to_string(m->param_types[i]));
+            }
+            printf(")\t%s\n", jtype_to_string(m->return_type));
         }
-        printf(")\t%s\n", jtype_to_string(m->return_type));
     }
 
     printf("\n");
@@ -473,6 +534,13 @@ void free_class_table(ClassTable *ct)
 
         if (tmp->param_types) free(tmp->param_types);
         free(tmp->name);
+        free(tmp);
+    }
+
+    ClassEntryNode *en = ct->entries;
+    while (en) {
+        ClassEntryNode *tmp = en;
+        en = en->next;
         free(tmp);
     }
 
@@ -646,7 +714,7 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
         case N_StrLit:
             n->type_annot = malloc(8);
             strcpy(n->type_annot, "String");
-            return JT_STRING_ARRAY;
+            return JT_STRING;
 
         case N_Identifier: {
             Symbol *s = lookup_symbol(n->token, method, ct);
@@ -790,10 +858,8 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 arg2_type = infer_type(c->node, method, ct);
             }
 
-            /* Check argument types: first should be String[], second should be int
-               Report error if arg1 is undef OR if arg2 is not int */
-            if ((arg1_type == JT_UNDEF) ||
-                (arg2_type != JT_INT)) {
+            /* Check argument types: first should be String[], second should be int */
+            if (arg1_type != JT_STRING_ARRAY || arg2_type != JT_INT) {
                 printf("Line %d, col %d: Operator Integer.parseInt cannot be applied to types %s, %s\n",
                        n->line, n->col, jtype_to_string(arg1_type), jtype_to_string(arg2_type));
             }
@@ -902,7 +968,11 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             if (c) c = c->next;
             if (c && c->node) {
                 JType ret_type = infer_type(c->node, method, ct);
-                if (method && !types_compatible(ret_type, method->return_type)) {
+                if (ret_type == JT_VOID) {
+                    /* Returning a void expression is always an error */
+                    printf("Line %d, col %d: Incompatible type void in return statement\n",
+                           c->node->line, c->node->col);
+                } else if (method && !types_compatible(ret_type, method->return_type)) {
                     printf("Line %d, col %d: Incompatible type %s in return statement\n",
                            c->node->line, c->node->col, jtype_to_string(ret_type));
                 }
@@ -920,7 +990,7 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             if (c) c = c->next;
             if (c && c->node) {
                 JType arg_type = infer_type(c->node, method, ct);
-                if (arg_type == JT_UNDEF || arg_type == JT_VOID) {
+                if (arg_type == JT_UNDEF || arg_type == JT_VOID || arg_type == JT_STRING_ARRAY) {
                     printf("Line %d, col %d: Incompatible type %s in System.out.print statement\n",
                            c->node->line, c->node->col, jtype_to_string(arg_type));
                 }
@@ -954,6 +1024,10 @@ void check_and_annotate_ast(struct node *program, ClassTable *ct)
     if (c) c = c->next;
     c = c && c->next ? c->next : NULL;
 
+    /* Track which MethodEntry instances have been processed to skip duplicates */
+    MethodEntry *processed[256];
+    int n_processed = 0;
+
     for (; c && c->node; c = c->next) {
         if (c->node->category == N_MethodDecl) {
             struct node_list *md = c->node->children;
@@ -965,9 +1039,19 @@ void check_and_annotate_ast(struct node *program, ClassTable *ct)
                 int n_params;
 
                 process_method_header(md->node, &ret_type, &method_name, &param_types, &n_params);
-                MethodEntry *method = find_method_by_signature(ct->methods, method_name, n_params);
+                MethodEntry *method = find_exact_method(ct->methods, method_name, n_params, param_types);
 
-                if (method && md->next && md->next->node && md->next->node->category == N_MethodBody) {
+                /* Check if this method was already processed (duplicate) */
+                int already_processed = 0;
+                if (method) {
+                    for (int i = 0; i < n_processed; i++) {
+                        if (processed[i] == method) { already_processed = 1; break; }
+                    }
+                }
+
+                if (method && !already_processed && md->next && md->next->node &&
+                    md->next->node->category == N_MethodBody) {
+                    if (n_processed < 256) processed[n_processed++] = method;
                     struct node_list *body = md->next->node->children;
                     if (body) body = body->next;  /* Skip sentinel */
                     for (; body && body->node; body = body->next) {

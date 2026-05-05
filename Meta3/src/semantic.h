@@ -11,7 +11,7 @@
 #include "ast.h"
 
 typedef enum {
-    JT_INT, JT_DOUBLE, JT_BOOLEAN, JT_VOID, JT_STRING_ARRAY, JT_UNDEF
+    JT_INT, JT_DOUBLE, JT_BOOLEAN, JT_VOID, JT_STRING_ARRAY, JT_STRING, JT_UNDEF
 } JType;
 
 typedef struct Symbol {
@@ -32,10 +32,22 @@ typedef struct MethodEntry {
     struct MethodEntry *next;
 } MethodEntry;
 
+/* Ordered list node for class-level entries (fields and methods mixed) */
+typedef enum { CE_FIELD, CE_METHOD } ClassEntryKind;
+typedef struct ClassEntryNode {
+    ClassEntryKind kind;
+    union {
+        Symbol *field;
+        MethodEntry *method;
+    };
+    struct ClassEntryNode *next;
+} ClassEntryNode;
+
 typedef struct {
     char *name;
     Symbol *fields;
     MethodEntry *methods;
+    ClassEntryNode *entries;  /* Fields and methods in declaration order */
 } ClassTable;
 
 ClassTable *build_symbol_tables(struct node *program);
