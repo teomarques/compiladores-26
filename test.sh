@@ -34,12 +34,14 @@ PASSED=0
 FAILED=0
 TOTAL=0
 
-echo "Testing Meta $META"
-echo "=================================="
+OUTPUT_FILE="test_results_meta${META}.txt"
+
+echo "Testing Meta $META - Tests in progress..."
+echo "Testing Meta $META" > "$OUTPUT_FILE"
+echo "==================================" >> "$OUTPUT_FILE"
 
 for test_dir in "${TESTES[@]}"; do
     if [ ! -d "$test_dir" ]; then
-        echo "Directory not found: $test_dir"
         continue
     fi
 
@@ -54,33 +56,34 @@ for test_dir in "${TESTES[@]}"; do
 
         # Run compiler
         if ! timeout 5 "$COMPILER" $FLAGS < "$java_file" > /tmp/test_out.txt 2>&1; then
-            echo "[FAIL] $test_name (compiler crashed)"
+            echo "[FAIL] $test_name (compiler crashed)" >> "$OUTPUT_FILE"
             ((FAILED++))
             continue
         fi
 
         # Check if expected output file exists
         if [ ! -f "$expected_file" ]; then
-            echo "[SKIP] $test_name (no .out file)"
             ((TOTAL--))
             continue
         fi
 
         # Compare output
         if diff -q "$expected_file" /tmp/test_out.txt > /dev/null 2>&1; then
-            echo "[PASS] $test_name"
+            echo "[PASS] $test_name" >> "$OUTPUT_FILE"
             ((PASSED++))
         else
-            echo "[FAIL] $test_name"
+            echo "[FAIL] $test_name" >> "$OUTPUT_FILE"
             ((FAILED++))
         fi
     done
 done
 
-echo
-echo "=================================="
-echo "Total: $TOTAL | Passed: $PASSED | Failed: $FAILED"
-echo "=================================="
+echo "" >> "$OUTPUT_FILE"
+echo "==================================" >> "$OUTPUT_FILE"
+echo "Total: $TOTAL | Passed: $PASSED | Failed: $FAILED" >> "$OUTPUT_FILE"
+echo "==================================" >> "$OUTPUT_FILE"
+
+echo "Test output saved to $OUTPUT_FILE"
 
 if [ $FAILED -gt 0 ]; then
     exit 1

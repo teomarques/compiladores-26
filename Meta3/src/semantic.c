@@ -314,14 +314,19 @@ ClassTable *build_symbol_tables(struct node *program)
         if (c->node->category == N_FieldDecl) {
             struct node_list *fd = c->node->children;
             if (fd) fd = fd->next;  /* Skip sentinel */
-            if (fd && fd->node && fd->next && fd->next->node) {
-                struct node *type_node = fd->node;
-                struct node *id_node = fd->next->node;
 
-                JType type = node_to_jtype(type_node);
-                const char *id = id_node->token;
-                int line = id_node->line;
-                int col = id_node->col;
+            /* Get type from first child */
+            JType type = JT_UNDEF;
+            if (fd && fd->node) {
+                type = node_to_jtype(fd->node);
+                fd = fd->next;  /* Move to first identifier */
+            }
+
+            /* Process all identifiers in this field declaration (handles int a, b, c;) */
+            for (; fd && fd->node; fd = fd->next) {
+                const char *id = fd->node->token;
+                int line = fd->node->line;
+                int col = fd->node->col;
 
                 if (is_reserved_id(id)) {
                     printf("Line %d, col %d: Symbol %s is reserved\n", line, col, id);
@@ -642,13 +647,24 @@ static JType check_binary_op(struct node *n, MethodEntry *method, ClassTable *ct
                    n->line, n->col, n->category == N_And ? "&&" : "||", left_str, right_str);
             return JT_BOOLEAN;
 
-        case N_Lshift: case N_Rshift: case N_Xor:
+        case N_Lshift: case N_Rshift:
             if (left_type == JT_INT && right_type == JT_INT) {
                 return JT_INT;
             }
             printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
-                   n->line, n->col, n->category == N_Lshift ? "<<" :
-                            n->category == N_Rshift ? ">>" : "^", left_str, right_str);
+                   n->line, n->col, n->category == N_Lshift ? "<<" : ">>", left_str, right_str);
+            return JT_UNDEF;
+
+        case N_Xor:
+            /* XOR works on both int and boolean types */
+            if (left_type == JT_INT && right_type == JT_INT) {
+                return JT_INT;
+            }
+            if (left_type == JT_BOOLEAN && right_type == JT_BOOLEAN) {
+                return JT_BOOLEAN;
+            }
+            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                   n->line, n->col, "^", left_str, right_str);
             return JT_UNDEF;
 
         default:
@@ -956,11 +972,19 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             /* Add variable to method's symbol table when encountered */
             c = n->children;
             if (c) c = c->next;  /* Skip sentinel */
-            if (c && c->node && c->next && c->next->node) {
-                JType vtype = node_to_jtype(c->node);
-                const char *vname = c->next->node->token;
-                int vline = c->next->node->line;
-                int vcol = c->next->node->col;
+
+            /* Get the type from first child */
+            JType vtype = JT_UNDEF;
+            if (c && c->node) {
+                vtype = node_to_jtype(c->node);
+                c = c->next;  /* Move to first identifier */
+            }
+
+            /* Process all identifiers in this declaration (handles int a, b, c; ) */
+            for (; c && c->node; c = c->next) {
+                const char *vname = c->node->token;
+                int vline = c->node->line;
+                int vcol = c->node->col;
 
                 if (is_reserved_id(vname)) {
                     printf("Line %d, col %d: Symbol %s is reserved\n",
@@ -975,35 +999,69 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             break;
         }
 
-        case N_If:
+        case N_If: {
             c = n->children;
             if (c) c = c->next;
-            if (c && c->node) {
-                JType cond_type = infer_type(c->node, method, ct);
-                if (cond_type != JT_BOOLEAN) {
-                    printf("Line %d, col %d: Incompatible type %s in if statement\n",
-                           c->node->line, c->node->col, jtype_to_string(cond_type));
-                }
-            }
-            c = c && c->next ? c->next : NULL;
-            if (c && c->node) check_statement(c->node, method, ct);
-            c = c && c->next ? c->next : NULL;
-            if (c && c->node) check_statement(c->node, method, ct);
-            break;
 
-        case N_While:
-            c = n->children;
-            if (c) c = c->next;
+            /* Track condition type error to report after body processing */
+            JType cond_type = JT_BOOLEAN;
+            int cond_line = 0, cond_col = 0;
+            int has_type_error = 0;
+
             if (c && c->node) {
-                JType cond_type = infer_type(c->node, method, ct);
+                cond_type = infer_type(c->node, method, ct);
                 if (cond_type != JT_BOOLEAN) {
-                    printf("Line %d, col %d: Incompatible type %s in while statement\n",
-                           c->node->line, c->node->col, jtype_to_string(cond_type));
+                    cond_line = c->node->line;
+                    cond_col = c->node->col;
+                    has_type_error = 1;
                 }
             }
+
+            /* Process then block */
             c = c && c->next ? c->next : NULL;
             if (c && c->node) check_statement(c->node, method, ct);
+
+            /* Process else block */
+            c = c && c->next ? c->next : NULL;
+            if (c && c->node) check_statement(c->node, method, ct);
+
+            /* Report type error after processing blocks */
+            if (has_type_error) {
+                printf("Line %d, col %d: Incompatible type %s in if statement\n",
+                       cond_line, cond_col, jtype_to_string(cond_type));
+            }
             break;
+        }
+
+        case N_While: {
+            c = n->children;
+            if (c) c = c->next;
+
+            /* Track condition type error to report after body processing */
+            JType cond_type = JT_BOOLEAN;
+            int cond_line = 0, cond_col = 0;
+            int has_type_error = 0;
+
+            if (c && c->node) {
+                cond_type = infer_type(c->node, method, ct);
+                if (cond_type != JT_BOOLEAN) {
+                    cond_line = c->node->line;
+                    cond_col = c->node->col;
+                    has_type_error = 1;
+                }
+            }
+
+            /* Process body */
+            c = c && c->next ? c->next : NULL;
+            if (c && c->node) check_statement(c->node, method, ct);
+
+            /* Report type error after processing body */
+            if (has_type_error) {
+                printf("Line %d, col %d: Incompatible type %s in while statement\n",
+                       cond_line, cond_col, jtype_to_string(cond_type));
+            }
+            break;
+        }
 
         case N_Return:
             c = n->children;
