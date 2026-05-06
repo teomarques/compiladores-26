@@ -10,3 +10,4 @@ y.gv
 *.zip
 jucompiler
 /.claude.claude/
+.vscode/
