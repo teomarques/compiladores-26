@@ -305,7 +305,13 @@ stmt_no_if:
 block_stmt:
       LBRACE stmt_list RBRACE
         {
-            $$ = make_block($2);
+            struct node *blk = make_block($2);
+            /* If block is empty (only sentinel child, no real content), skip it */
+            if (blk && blk->category == N_Block && !blk->children->next) {
+                $$ = NULL;
+            } else {
+                $$ = blk;
+            }
         }
     ;
 

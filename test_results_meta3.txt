@@ -266,7 +266,7 @@ Testing Meta 3
 [PASS] all_errors.java
 [PASS] assign_error.java
 [PASS] ast_F_calls_parseargs_print.java
-[FAIL] ast_F_empty_nested_blocks.java
+[PASS] ast_F_empty_nested_blocks.java
 [PASS] ast_F_if_else_shapes.java
 [PASS] ast_F_nested_if_while_blocks.java
 [PASS] ast_F_semicolon_block_shapes.java
@@ -363,5 +363,5 @@ Testing Meta 3
 [PASS] widening.java
 
 ==================================
-Total: 361 | Passed: 357 | Failed: 4
+Total: 361 | Passed: 358 | Failed: 3
 ==================================
