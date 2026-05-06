@@ -9,6 +9,6 @@ y.gv
 *.tab.h
 *.zip
 jucompiler
-/.claude.claude/
+.claude/worktrees/
 .vscode/
 *.txt
