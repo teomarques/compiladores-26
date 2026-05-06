@@ -300,6 +300,7 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 "else" { print_simple_token("ELSE"); return ELSE; }
 "if" { print_simple_token("IF"); return IF; }
 "int" { print_simple_token("INT"); return INT; }
+"System.out.println" { print_simple_token("PRINT"); return PRINT; }
 "System.out.print" { print_simple_token("PRINT"); return PRINT; }
 "Integer.parseInt" { print_simple_token("PARSEINT"); return PARSEINT; }
 "public" { print_simple_token("PUBLIC"); return PUBLIC; }
