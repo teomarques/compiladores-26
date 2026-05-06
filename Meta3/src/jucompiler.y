@@ -69,7 +69,7 @@ static struct node *err_cond_placeholder(void)
 
 %type <n> class_members method_decl method_header method_body
 %type <n> type formal_params fp_list
-%type <n> stmt_list var_decl
+%type <n> stmt_list method_stmt_list var_decl
 %type <n> stmt stmt_no_if
 %type <n> expr print_arg opt_expr block_stmt op_expr
 %type <n> call_args nonempty_call_args method_invocation assignment_expr parse_args_stmt
@@ -201,7 +201,7 @@ type:
     ;
 
 method_body:
-      LBRACE stmt_list RBRACE
+      LBRACE method_stmt_list RBRACE
         {
             struct node_list *c;
             $$ = newnode(N_MethodBody, NULL, @$.first_line, @$.first_column);
@@ -230,14 +230,14 @@ vd_id_list:
         }
     ;
 
-stmt_list:
+method_stmt_list:
       /* vazio */   { $$ = newnode(N_MethodBody, NULL, yylloc.first_line, yylloc.first_column); }
-    | stmt_list stmt
+    | method_stmt_list stmt
         {
             $$ = $1;
             if ($2) addchild($1, $2);
         }
-    | stmt_list var_decl
+    | method_stmt_list var_decl
         {
             struct node_list *c;
             $$ = $1;
@@ -245,6 +245,15 @@ stmt_list:
                 for (c = $2->children; c; c = c->next)
                     if (c->node) addchild($$, c->node);
             }
+        }
+    ;
+
+stmt_list:
+      /* vazio */   { $$ = newnode(N_MethodBody, NULL, yylloc.first_line, yylloc.first_column); }
+    | stmt_list stmt
+        {
+            $$ = $1;
+            if ($2) addchild($1, $2);
         }
     ;
 
@@ -552,12 +561,14 @@ int main(int argc, char **argv)
     }
     if (mode == 3 && ast && syn_errs == 0)
         printast(ast);
-    if (mode == 4 && ast && syn_errs == 0) {
+    if ((mode == 2 || mode == 4) && ast && syn_errs == 0) {
         class_table = build_symbol_tables(ast);
         if (class_table) {
             check_and_annotate_ast(ast, class_table);
-            print_symbol_tables(class_table);
-            printast(ast);
+            if (mode == 4) {
+                print_symbol_tables(class_table);
+                printast(ast);
+            }
             free_class_table(class_table);
         }
     }
