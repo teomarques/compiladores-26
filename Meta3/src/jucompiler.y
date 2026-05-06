@@ -246,10 +246,6 @@ stmt_list:
                     if (c->node) addchild($$, c->node);
             }
         }
-    | stmt_list error SEMICOLON
-        { $$ = $1; }
-    | stmt_list error RBRACE
-        { $$ = $1; }
     ;
 
 stmt:
@@ -268,34 +264,6 @@ stmt:
             addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
             addchild($$, $7 ? $7 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
         }
-    | IF LPAR error RPAR stmt  %prec IFX
-        {
-            $$ = newnode(N_If, NULL, @1.first_line, @1.first_column);
-            addchild($$, err_cond_placeholder());
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
-            addchild($$, newnode(N_Block, NULL, @$.first_line, @$.first_column));
-        }
-    | IF LPAR error RPAR stmt ELSE stmt
-        {
-            $$ = newnode(N_If, NULL, @1.first_line, @1.first_column);
-            addchild($$, err_cond_placeholder());
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
-            addchild($$, $7 ? $7 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
-        }
-    | IF error stmt  %prec IFX
-        {
-            $$ = newnode(N_If, NULL, @1.first_line, @1.first_column);
-            addchild($$, err_cond_placeholder());
-            addchild($$, $3 ? $3 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
-            addchild($$, newnode(N_Block, NULL, @$.first_line, @$.first_column));
-        }
-    | IF error stmt ELSE stmt
-        {
-            $$ = newnode(N_If, NULL, @1.first_line, @1.first_column);
-            addchild($$, err_cond_placeholder());
-            addchild($$, $3 ? $3 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
-        }
     ;
 
 stmt_no_if:
@@ -304,18 +272,6 @@ stmt_no_if:
             $$ = newnode(N_While, NULL, @1.first_line, @1.first_column);
             addchild($$, $3);
             addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
-        }
-    | WHILE LPAR error RPAR stmt
-        {
-            $$ = newnode(N_While, NULL, @1.first_line, @1.first_column);
-            addchild($$, err_cond_placeholder());
-            addchild($$, $5 ? $5 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
-        }
-    | WHILE error stmt
-        {
-            $$ = newnode(N_While, NULL, @1.first_line, @1.first_column);
-            addchild($$, err_cond_placeholder());
-            addchild($$, $3 ? $3 : newnode(N_Block, NULL, @$.first_line, @$.first_column));
         }
     | PRINT LPAR print_arg RPAR SEMICOLON
         {
