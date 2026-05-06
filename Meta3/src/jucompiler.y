@@ -280,6 +280,8 @@ stmt_no_if:
         }
     | PRINT LPAR error RPAR SEMICOLON
         { $$ = NULL; }
+    | PRINT LPAR error SEMICOLON
+        { $$ = NULL; }
     | block_stmt
     | method_invocation SEMICOLON
         { $$ = $1; }
@@ -355,6 +357,8 @@ parse_args_stmt:
             addchild($$, $5);
         }
     | PARSEINT LPAR IDENTIFIER LSQ error RSQ RPAR
+        { $$ = NULL; }
+    | PARSEINT LPAR IDENTIFIER LSQ error RPAR
         { $$ = NULL; }
     | PARSEINT LPAR error RPAR
         { $$ = NULL; }

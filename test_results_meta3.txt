@@ -117,14 +117,14 @@ Testing Meta 3
 [PASS] B_ok_many_top_level_semicolons.java
 [PASS] C2_err_else_after_while.java
 [PASS] C2_err_if_then_missing_stmt.java
-[FAIL] C2_err_parse_print_return_noise.java
+[PASS] C2_err_parse_print_return_noise.java
 [PASS] C2_err_statement_cascade_weird.java
 [PASS] C2_err_while_body_nonsense.java
 [PASS] C2_ok_deep_blocks.java
 [PASS] C2_ok_if_else_while_combo.java
 [PASS] C3_err_else_chain_noise.java
 [PASS] C3_err_if_condition_missing_term.java
-[FAIL] C3_err_print_and_return_noise.java
+[PASS] C3_err_print_and_return_noise.java
 [PASS] C3_err_stmt_chaos_2.java
 [PASS] C3_err_unclosed_nested_blocks.java
 [PASS] C3_err_while_with_else.java
@@ -132,7 +132,7 @@ Testing Meta 3
 [PASS] C3_ok_statements_dense.java
 [PASS] C4_err_if_while_crossfire.java
 [PASS] C4_err_nested_else_storm.java
-[FAIL] C4_err_return_print_parse_combo.java
+[PASS] C4_err_return_print_parse_combo.java
 [PASS] C4_err_statement_reserved_noise.java
 [PASS] C4_err_stmt_soup_1.java
 [PASS] C4_err_stmt_soup_2.java
@@ -363,5 +363,5 @@ Testing Meta 3
 [PASS] widening.java
 
 ==================================
-Total: 361 | Passed: 358 | Failed: 3
+Total: 361 | Passed: 361 | Failed: 0
 ==================================

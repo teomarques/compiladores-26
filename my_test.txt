@@ -1,0 +1,2 @@
+Line 4, col 35: syntax error: ]
+Line 5, col 27: syntax error: ;
