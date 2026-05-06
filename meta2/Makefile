@@ -1,5 +1,5 @@
 CC = cc
-CFLAGS = -Wall -Wno-unused-function
+CFLAGS = -Wall -Wno-unused-function -I./src
 
 OBJS = lex.yy.o y.tab.o ast.o
 

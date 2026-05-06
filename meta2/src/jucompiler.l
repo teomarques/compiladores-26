@@ -9,14 +9,25 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
+#include <limits.h>
 
 /* Header gerado por yacc/bison a partir do jucompiler.y.
  * (o teu Makefile deve gerar y.tab.h) */
 #include "y.tab.h"
 
 /* Executado antes de cada ação do lexer:
- * guarda a posição inicial do token em syn_* e avança a coluna. */
-#define YY_USER_ACTION { syn_line = lex_line; syn_column = lex_column; lex_column += yyleng; }
+ * guarda a posição inicial do token em syn_* e avança a coluna.
+ * Também atualiza yylloc para rastrear localizações Yacc. */
+#define YY_USER_ACTION { \
+    yylloc.first_line = lex_line; \
+    yylloc.first_column = lex_column; \
+    syn_line = lex_line; \
+    syn_column = lex_column; \
+    lex_column += yyleng; \
+    yylloc.last_line = lex_line; \
+    yylloc.last_column = lex_column; \
+}
 
 /* Para tokens com valor (IDENTIFIER, NATURAL, DECIMAL, BOOLLIT, STRLIT, etc.)
  * assume-se que o %union no yacc tem o campo 'lexeme'. */
@@ -67,6 +78,56 @@ static void print_valued_token(const char *token, const char *value) {
     if (print_tokens) {
         printf("%s(%s)\n", token, value);
     }
+}
+
+static int check_natural_bounds(const char *text) {
+    /* Check if integer literal is within int range (0 to 2147483647) */
+    /* Remove underscores for comparison */
+    char clean[100];
+    int j = 0;
+    for (int i = 0; text[i]; i++) {
+        if (text[i] != '_') {
+            clean[j++] = text[i];
+        }
+    }
+    clean[j] = '\0';
+
+    /* Check if it's larger than INT_MAX (2147483647) */
+    if (j > 10) return 0; /* More than 10 digits, definitely out of bounds */
+    if (j == 10 && strcmp(clean, "2147483647") > 0) return 0;
+    return 1;
+}
+
+static int check_decimal_bounds(const char *text) {
+    /* Check if decimal literal is within valid double range */
+    /* First, remove underscores (Java allows them, strtod doesn't) */
+    char clean[1000];
+    int j = 0;
+    int has_digits = 0;
+    for (int i = 0; text[i] && j < (int)sizeof(clean) - 1; i++) {
+        if (text[i] != '_') {
+            clean[j++] = text[i];
+            if (text[i] >= '0' && text[i] <= '9') has_digits = 1;
+        }
+    }
+    clean[j] = '\0';
+
+    char *endptr;
+    double val = strtod(clean, &endptr);
+
+    /* strtod returns HUGE_VAL on overflow */
+    if (val == HUGE_VAL || val == -HUGE_VAL) return 0;
+
+    /* Check for underflow: if we have significant digits but got 0, it underflowed */
+    if (val == 0.0 && has_digits) {
+        /* Need to check if original string was non-zero */
+        /* If string contains non-zero digits and converted to 0, it's underflow */
+        for (int i = 0; clean[i]; i++) {
+            if (clean[i] >= '1' && clean[i] <= '9') return 0;  /* Non-zero digit found, underflowed */
+        }
+    }
+
+    return 1;
 }
 
 %}
@@ -294,12 +355,20 @@ digitseq {digit}({digit}|{underscore})*{digit}|{digit}
 "volatile" { PASS_TOKEN(); print_valued_token("RESERVED", yytext); return RESERVED; }
 
 
-{digitseq}[eE][+-]?{digitseq} { PASS_TOKEN(); print_valued_token("DECIMAL", yytext); return DECIMAL; }
-{digitseq}?"."{digitseq}([eE][+-]?{digitseq})? { PASS_TOKEN(); print_valued_token("DECIMAL", yytext); return DECIMAL; }
-{digitseq}"."([eE][+-]?{digitseq})? { PASS_TOKEN(); print_valued_token("DECIMAL", yytext); return DECIMAL; }
+{digitseq}[eE][+-]?{digitseq} {
+    PASS_TOKEN(); print_valued_token("DECIMAL", yytext); return DECIMAL;
+}
+{digitseq}?"."{digitseq}([eE][+-]?{digitseq})? {
+    PASS_TOKEN(); print_valued_token("DECIMAL", yytext); return DECIMAL;
+}
+{digitseq}"."([eE][+-]?{digitseq})? {
+    PASS_TOKEN(); print_valued_token("DECIMAL", yytext); return DECIMAL;
+}
 
 {character}+({digit}|{character})* { PASS_TOKEN(); print_valued_token("IDENTIFIER", yytext); return IDENTIFIER; }
-0|{nonzero}({digit}|{underscore})*{digit}|{nonzero} { PASS_TOKEN(); print_valued_token("NATURAL", yytext); return NATURAL; }
+0|{nonzero}({digit}|{underscore})*{digit}|{nonzero} {
+    PASS_TOKEN(); print_valued_token("NATURAL", yytext); return NATURAL;
+}
 
 . { lex_errs++; printf("Line %d, col %d: illegal character (%s)\n", syn_line, syn_column, yytext); }
 

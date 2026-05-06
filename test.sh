@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 META=${1:-3}
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -12,7 +13,7 @@ case $META in
     2)
         COMPILER="$BASE_DIR/meta2/jucompiler"
         TESTES=("$BASE_DIR/testes/meta2")
-        FLAGS=""
+        FLAGS="-t"
         ;;
     3)
         COMPILER="$BASE_DIR/meta3/jucompiler"

@@ -1,0 +1,43 @@
+Testing Meta 2
+==================================
+[PASS] Factorial.java
+[PASS] FactorialErros.java
+[PASS] Factorial_corrumpido.java
+[PASS] FieldandMethod1.java
+[PASS] FieldandMethod2.java
+[PASS] IfWhileVoid.java
+[PASS] LexErrorWithTree.java
+[PASS] MethodFieldError.java
+[PASS] MethodFieldError2.java
+[PASS] MethodFieldError3.java
+[PASS] MethodFieldError4.java
+[PASS] MethodFieldError5.java
+[PASS] Miscellaneous.java
+[PASS] MultipleErrors.java
+[PASS] Stats.java
+[PASS] TypesFieldVar.java
+[PASS] aLittleOfEverything.java
+[PASS] all_errors.java
+[PASS] assign_error.java
+[PASS] blocks.java
+[PASS] blocks2.java
+[PASS] blocksAndMethods.java
+[PASS] errorsAndAST.java
+[PASS] erros_sintaxe.java
+[PASS] essencial.java
+[PASS] exemplo_erro.java
+[PASS] exprAndMore_AST.java
+[PASS] field_decl.java
+[PASS] if_blocks.java
+[PASS] lastOne.java
+[PASS] simples.java
+[PASS] string_error.java
+[PASS] string_error2.java
+[PASS] teste_ast.java
+[PASS] teste_ast_erros.java
+[PASS] varios_testes.java
+[PASS] various.java
+
+==================================
+Total: 37 | Passed: 37 | Failed: 0
+==================================
