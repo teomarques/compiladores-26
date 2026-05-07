@@ -1,0 +1,4 @@
+lli-20: lli: ../testes/meta4/complex.ll:722:36: error: use of undefined value '%-1'
+  %285 = phi i1 [ %284, %L153 ], [ %-1, %L154 ]
+                                   ^
+

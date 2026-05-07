@@ -1,3 +1,4 @@
+int semantic_errors = 0;
 /*
  * Semantic Analyzer Implementation - Meta 3
  * Autores:
@@ -57,7 +58,8 @@ static int check_decimal_bounds(const char *text) {
         /* Need to check if original string was non-zero */
         /* If string contains non-zero digits and converted to 0, it's underflow */
         for (int i = 0; clean[i]; i++) {
-            if (clean[i] >= '1' && clean[i] <= '9') return 0;  /* Non-zero digit found, underflowed */
+            if (clean[i] == 'e' || clean[i] == 'E') break;
+            if (clean[i] >= '1' && clean[i] <= '9') return 0;  /* Non-zero digit found in mantissa, underflowed */
         }
     }
 
@@ -97,7 +99,7 @@ static int is_reserved_id(const char *name)
     return (strcmp(name, "_") == 0);
 }
 
-static Symbol *find_symbol(Symbol *symbols, const char *name)
+Symbol *find_symbol(Symbol *symbols, const char *name)
 {
     for (Symbol *s = symbols; s; s = s->next) {
         if (strcmp(s->name, name) == 0) return s;
@@ -135,7 +137,7 @@ static MethodEntry *find_method_by_signature(MethodEntry *methods, const char *n
     return NULL;
 }
 
-static MethodEntry *find_exact_method(MethodEntry *methods, const char *name, int n_params,
+MethodEntry *find_exact_method(MethodEntry *methods, const char *name, int n_params,
                                        JType *arg_types)
 {
     /* Find a method with exact type match (all types must be equal) */
@@ -234,7 +236,7 @@ static JType extract_param_type(struct node *param_node)
     return node_to_jtype(param_node);
 }
 
-static void process_method_header(struct node *header, JType *ret_type,
+void process_method_header(struct node *header, JType *ret_type,
                                    char **method_name, JType **param_types, int *n_params)
 {
     *ret_type = JT_UNDEF;
@@ -294,6 +296,7 @@ ClassTable *build_symbol_tables(struct node *program)
     ct->fields = NULL;
     ct->methods = NULL;
     ct->entries = NULL;
+    ct->semantic_errors = 0;
 
     /* First child is class Identifier (skip sentinel) */
     struct node_list *c = program->children;
@@ -329,9 +332,9 @@ ClassTable *build_symbol_tables(struct node *program)
                 int col = fd->node->col;
 
                 if (is_reserved_id(id)) {
-                    printf("Line %d, col %d: Symbol %s is reserved\n", line, col, id);
+                    (semantic_errors++, printf("Line %d, col %d: Symbol %s is reserved\n", line, col, id));
                 } else if (find_symbol(ct->fields, id)) {
-                    printf("Line %d, col %d: Symbol %s already defined\n", line, col, id);
+                    (semantic_errors++, printf("Line %d, col %d: Symbol %s already defined\n", line, col, id));
                 } else {
                     add_symbol(&ct->fields, id, type, 0, line, col);
                     add_class_entry(ct, CE_FIELD, find_symbol(ct->fields, id), NULL);
@@ -406,11 +409,11 @@ ClassTable *build_symbol_tables(struct node *program)
                                             int pcol = pd->next->node->col;
 
                                             if (is_reserved_id(pname)) {
-                                                printf("Line %d, col %d: Symbol %s is reserved\n",
-                                                       pline, pcol, pname);
+                                                (semantic_errors++, printf("Line %d, col %d: Symbol %s is reserved\n",
+                                                       pline, pcol, pname));
                                             } else if (find_symbol(method->symbols, pname)) {
-                                                printf("Line %d, col %d: Symbol %s already defined\n",
-                                                       pline, pcol, pname);
+                                                (semantic_errors++, printf("Line %d, col %d: Symbol %s already defined\n",
+                                                       pline, pcol, pname));
                                             } else {
                                                 add_symbol(&method->symbols, pname, ptype, 1,
                                                            pline, pcol);
@@ -441,9 +444,9 @@ ClassTable *build_symbol_tables(struct node *program)
                                             int pline = pd->next->node->line;
                                             int pcol = pd->next->node->col;
                                             if (is_reserved_id(pname)) {
-                                                printf("Line %d, col %d: Symbol %s is reserved\n", pline, pcol, pname);
+                                                (semantic_errors++, printf("Line %d, col %d: Symbol %s is reserved\n", pline, pcol, pname));
                                             } else if (find_symbol(temp_symbols, pname)) {
-                                                printf("Line %d, col %d: Symbol %s already defined\n", pline, pcol, pname);
+                                                (semantic_errors++, printf("Line %d, col %d: Symbol %s already defined\n", pline, pcol, pname));
                                             } else {
                                                 add_symbol(&temp_symbols, pname, ptype, 1, pline, pcol);
                                             }
@@ -461,12 +464,12 @@ ClassTable *build_symbol_tables(struct node *program)
 
                             /* Report method errors (reserved first, then duplicate only if not reserved) */
                             if (reserved_method) {
-                                printf("Line %d, col %d: Symbol %s is reserved\n",
-                                       method_line, method_col, method_name);
+                                (semantic_errors++, printf("Line %d, col %d: Symbol %s is reserved\n",
+                                       method_line, method_col, method_name));
                             } else if (is_duplicate) {
                                 /* Specification: duplicate method message must show only the identifier */
-                                printf("Line %d, col %d: Symbol %s already defined\n",
-                                       method_line, method_col, method_name);
+                                (semantic_errors++, printf("Line %d, col %d: Symbol %s already defined\n",
+                                       method_line, method_col, method_name));
                             }
                         }
 
@@ -597,11 +600,11 @@ static JType check_binary_op(struct node *n, MethodEntry *method, ClassTable *ct
                 (right_type == JT_INT || right_type == JT_DOUBLE)) {
                 return (left_type == JT_DOUBLE || right_type == JT_DOUBLE) ? JT_DOUBLE : JT_INT;
             }
-            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+            (semantic_errors++, printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
                    n->line, n->col, n->category == N_Add ? "+" :
                             n->category == N_Sub ? "-" :
                             n->category == N_Mul ? "*" :
-                            n->category == N_Div ? "/" : "%", left_str, right_str);
+                            n->category == N_Div ? "/" : "%", left_str, right_str));
             return JT_UNDEF;
 
         case N_Lt: case N_Gt: case N_Le: case N_Ge:
@@ -609,10 +612,10 @@ static JType check_binary_op(struct node *n, MethodEntry *method, ClassTable *ct
                 (right_type == JT_INT || right_type == JT_DOUBLE)) {
                 return JT_BOOLEAN;
             }
-            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+            (semantic_errors++, printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
                    n->line, n->col, n->category == N_Lt ? "<" :
                             n->category == N_Gt ? ">" :
-                            n->category == N_Le ? "<=" : ">=", left_str, right_str);
+                            n->category == N_Le ? "<=" : ">=", left_str, right_str));
             return JT_BOOLEAN;
 
         case N_Eq: case N_Ne: {
@@ -630,8 +633,8 @@ static JType check_binary_op(struct node *n, MethodEntry *method, ClassTable *ct
                 }
             }
             if (!valid) {
-                printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
-                       n->line, n->col, n->category == N_Eq ? "==" : "!=", left_str, right_str);
+                (semantic_errors++, printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                       n->line, n->col, n->category == N_Eq ? "==" : "!=", left_str, right_str));
             }
             return JT_BOOLEAN;
         }
@@ -640,16 +643,16 @@ static JType check_binary_op(struct node *n, MethodEntry *method, ClassTable *ct
             if (left_type == JT_BOOLEAN && right_type == JT_BOOLEAN) {
                 return JT_BOOLEAN;
             }
-            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
-                   n->line, n->col, n->category == N_And ? "&&" : "||", left_str, right_str);
+            (semantic_errors++, printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                   n->line, n->col, n->category == N_And ? "&&" : "||", left_str, right_str));
             return JT_BOOLEAN;
 
         case N_Lshift: case N_Rshift:
             if (left_type == JT_INT && right_type == JT_INT) {
                 return JT_INT;
             }
-            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
-                   n->line, n->col, n->category == N_Lshift ? "<<" : ">>", left_str, right_str);
+            (semantic_errors++, printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                   n->line, n->col, n->category == N_Lshift ? "<<" : ">>", left_str, right_str));
             return JT_UNDEF;
 
         case N_Xor:
@@ -660,8 +663,8 @@ static JType check_binary_op(struct node *n, MethodEntry *method, ClassTable *ct
             if (left_type == JT_BOOLEAN && right_type == JT_BOOLEAN) {
                 return JT_BOOLEAN;
             }
-            printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
-                   n->line, n->col, "^", left_str, right_str);
+            (semantic_errors++, printf("Line %d, col %d: Operator %s cannot be applied to types %s, %s\n",
+                   n->line, n->col, "^", left_str, right_str));
             return JT_UNDEF;
 
         default:
@@ -682,20 +685,20 @@ static JType check_unary_op(struct node *n, MethodEntry *method, ClassTable *ct)
     switch (n->category) {
         case N_Not:
             if (op_type == JT_BOOLEAN) return JT_BOOLEAN;
-            printf("Line %d, col %d: Operator ! cannot be applied to type %s\n",
-                   n->line, n->col, op_str);
+            (semantic_errors++, printf("Line %d, col %d: Operator ! cannot be applied to type %s\n",
+                   n->line, n->col, op_str));
             return JT_BOOLEAN;
 
         case N_Minus: case N_Plus:
             if (op_type == JT_INT || op_type == JT_DOUBLE) return op_type;
-            printf("Line %d, col %d: Operator %s cannot be applied to type %s\n",
-                   n->line, n->col, n->category == N_Minus ? "-" : "+", op_str);
+            (semantic_errors++, printf("Line %d, col %d: Operator %s cannot be applied to type %s\n",
+                   n->line, n->col, n->category == N_Minus ? "-" : "+", op_str));
             return JT_UNDEF;
 
         case N_Length:
             if (op_type == JT_STRING_ARRAY) return JT_INT;
-            printf("Line %d, col %d: Operator .length cannot be applied to type %s\n",
-                   n->line, n->col, op_str);
+            (semantic_errors++, printf("Line %d, col %d: Operator .length cannot be applied to type %s\n",
+                   n->line, n->col, op_str));
             return JT_INT;
 
         default:
@@ -711,7 +714,7 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
         case N_Natural: {
             /* Check bounds for natural number */
             if (n->token && !check_natural_bounds(n->token)) {
-                printf("Line %d, col %d: Number %s out of bounds\n", n->line, n->col, n->token);
+                (semantic_errors++, printf("Line %d, col %d: Number %s out of bounds\n", n->line, n->col, n->token));
             }
             n->type_annot = malloc(8);
             strcpy(n->type_annot, "int");
@@ -721,7 +724,7 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
         case N_Decimal: {
             /* Check bounds for decimal number */
             if (n->token && !check_decimal_bounds(n->token)) {
-                printf("Line %d, col %d: Number %s out of bounds\n", n->line, n->col, n->token);
+                (semantic_errors++, printf("Line %d, col %d: Number %s out of bounds\n", n->line, n->col, n->token));
             }
             n->type_annot = malloc(8);
             strcpy(n->type_annot, "double");
@@ -740,7 +743,7 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
 
         case N_Identifier: {
             if (is_reserved_id(n->token)) {
-                printf("Line %d, col %d: Symbol %s is reserved\n", n->line, n->col, n->token);
+                (semantic_errors++, printf("Line %d, col %d: Symbol %s is reserved\n", n->line, n->col, n->token));
                 n->type_annot = malloc(8);
                 strcpy(n->type_annot, "undef");
                 return JT_UNDEF;
@@ -751,7 +754,7 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 strcpy(n->type_annot, jtype_to_string(s->type));
                 return s->type;
             } else {
-                printf("Line %d, col %d: Cannot find symbol %s\n", n->line, n->col, n->token);
+                (semantic_errors++, printf("Line %d, col %d: Cannot find symbol %s\n", n->line, n->col, n->token));
                 n->type_annot = malloc(8);
                 strcpy(n->type_annot, "undef");
                 return JT_UNDEF;
@@ -784,8 +787,8 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
 
             /* Check for reserved method name */
             if (method_name && is_reserved_id(method_name)) {
-                printf("Line %d, col %d: Symbol %s is reserved\n",
-                       n->line, n->col, method_name);
+                (semantic_errors++, printf("Line %d, col %d: Symbol %s is reserved\n",
+                       n->line, n->col, method_name));
                 if (method_id) {
                     method_id->type_annot = malloc(8);
                     strcpy(method_id->type_annot, "undef");
@@ -834,7 +837,7 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
 
                 /* Check for ambiguity */
                 if (match_count > 1) {
-                    printf("Line %d, col %d: Reference to method %s(", n->line, n->col, method_name ? method_name : "");
+                    (semantic_errors++, printf("Line %d, col %d: Reference to method %s(", n->line, n->col, method_name ? method_name : ""));
                     for (int i = 0; i < n_args; i++) {
                         if (i > 0) printf(",");
                         printf("%s", jtype_to_string(arg_types[i]));
@@ -870,7 +873,7 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 if (arg_types) free(arg_types);
                 return called->return_type;
             } else if (!ambiguous) {
-                printf("Line %d, col %d: Cannot find symbol %s(", n->line, n->col, method_name ? method_name : "");
+                (semantic_errors++, printf("Line %d, col %d: Cannot find symbol %s(", n->line, n->col, method_name ? method_name : ""));
                 for (int i = 0; i < n_args; i++) {
                     if (i > 0) printf(",");
                     printf("%s", jtype_to_string(arg_types[i]));
@@ -914,8 +917,8 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
 
             /* Check argument types: first should be String[], second should be int */
             if (arg1_type != JT_STRING_ARRAY || arg2_type != JT_INT) {
-                printf("Line %d, col %d: Operator Integer.parseInt cannot be applied to types %s, %s\n",
-                       n->line, n->col, jtype_to_string(arg1_type), jtype_to_string(arg2_type));
+                (semantic_errors++, printf("Line %d, col %d: Operator Integer.parseInt cannot be applied to types %s, %s\n",
+                       n->line, n->col, jtype_to_string(arg1_type), jtype_to_string(arg2_type)));
             }
 
             n->type_annot = malloc(8);
@@ -938,15 +941,15 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 Symbol *lhs_sym = lookup_symbol(lhs->token, method, ct);
                 if (lhs_sym && lhs_sym->is_param && lhs_sym->type == JT_STRING_ARRAY) {
                     is_param_assign = 1;
-                    printf("Line %d, col %d: Operator = cannot be applied to types %s, %s\n",
-                           n->line, n->col, jtype_to_string(lhs_type), jtype_to_string(rhs_type));
+                    (semantic_errors++, printf("Line %d, col %d: Operator = cannot be applied to types %s, %s\n",
+                           n->line, n->col, jtype_to_string(lhs_type), jtype_to_string(rhs_type)));
                 }
             }
 
             /* Report error if either operand is undef or types are incompatible */
             if (!is_param_assign && (lhs_type == JT_UNDEF || rhs_type == JT_UNDEF || !types_compatible(rhs_type, lhs_type))) {
-                printf("Line %d, col %d: Operator = cannot be applied to types %s, %s\n",
-                       n->line, n->col, jtype_to_string(lhs_type), jtype_to_string(rhs_type));
+                (semantic_errors++, printf("Line %d, col %d: Operator = cannot be applied to types %s, %s\n",
+                       n->line, n->col, jtype_to_string(lhs_type), jtype_to_string(rhs_type)));
             }
 
             n->type_annot = malloc(16);
@@ -984,11 +987,11 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
                 int vcol = c->node->col;
 
                 if (is_reserved_id(vname)) {
-                    printf("Line %d, col %d: Symbol %s is reserved\n",
-                           vline, vcol, vname);
+                    (semantic_errors++, printf("Line %d, col %d: Symbol %s is reserved\n",
+                           vline, vcol, vname));
                 } else if (find_symbol(method->symbols, vname)) {
-                    printf("Line %d, col %d: Symbol %s already defined\n",
-                           vline, vcol, vname);
+                    (semantic_errors++, printf("Line %d, col %d: Symbol %s already defined\n",
+                           vline, vcol, vname));
                 } else {
                     add_symbol(&method->symbols, vname, vtype, 0, vline, vcol);
                 }
@@ -1024,8 +1027,8 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
 
             /* Report type error after processing blocks */
             if (has_type_error) {
-                printf("Line %d, col %d: Incompatible type %s in if statement\n",
-                       cond_line, cond_col, jtype_to_string(cond_type));
+                (semantic_errors++, printf("Line %d, col %d: Incompatible type %s in if statement\n",
+                       cond_line, cond_col, jtype_to_string(cond_type)));
             }
             break;
         }
@@ -1054,8 +1057,8 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
 
             /* Report type error after processing body */
             if (has_type_error) {
-                printf("Line %d, col %d: Incompatible type %s in while statement\n",
-                       cond_line, cond_col, jtype_to_string(cond_type));
+                (semantic_errors++, printf("Line %d, col %d: Incompatible type %s in while statement\n",
+                       cond_line, cond_col, jtype_to_string(cond_type)));
             }
             break;
         }
@@ -1067,17 +1070,17 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
                 JType ret_type = infer_type(c->node, method, ct);
                 if (ret_type == JT_VOID) {
                     /* Returning a void expression is always an error */
-                    printf("Line %d, col %d: Incompatible type void in return statement\n",
-                           c->node->line, c->node->col);
+                    (semantic_errors++, printf("Line %d, col %d: Incompatible type void in return statement\n",
+                           c->node->line, c->node->col));
                 } else if (method && !types_compatible(ret_type, method->return_type)) {
-                    printf("Line %d, col %d: Incompatible type %s in return statement\n",
-                           c->node->line, c->node->col, jtype_to_string(ret_type));
+                    (semantic_errors++, printf("Line %d, col %d: Incompatible type %s in return statement\n",
+                           c->node->line, c->node->col, jtype_to_string(ret_type)));
                 }
             } else {
                 /* No return value (void return) */
                 if (method && method->return_type != JT_VOID) {
-                    printf("Line %d, col %d: Incompatible type void in return statement\n",
-                           n->line, n->col);
+                    (semantic_errors++, printf("Line %d, col %d: Incompatible type void in return statement\n",
+                           n->line, n->col));
                 }
             }
             break;
@@ -1088,8 +1091,8 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             if (c && c->node) {
                 JType arg_type = infer_type(c->node, method, ct);
                 if (arg_type == JT_UNDEF || arg_type == JT_VOID || arg_type == JT_STRING_ARRAY) {
-                    printf("Line %d, col %d: Incompatible type %s in System.out.print statement\n",
-                           c->node->line, c->node->col, jtype_to_string(arg_type));
+                    (semantic_errors++, printf("Line %d, col %d: Incompatible type %s in System.out.print statement\n",
+                           c->node->line, c->node->col, jtype_to_string(arg_type)));
                 }
             }
             break;
@@ -1160,4 +1163,5 @@ void check_and_annotate_ast(struct node *program, ClassTable *ct)
             }
         }
     }
+    ct->semantic_errors = semantic_errors;
 }

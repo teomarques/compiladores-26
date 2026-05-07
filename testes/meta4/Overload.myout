@@ -1,0 +1,4 @@
+lli-20: lli: ../testes/meta4/Overload.ll:24:13: error: redefinition of function '@_Main_overload'
+define void @_Main_overload() {
+            ^
+

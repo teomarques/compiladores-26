@@ -1,0 +1,4 @@
+lli-20: lli: ../testes/meta4/return_types.ll:55:74: error: use of undefined value '%-1'
+  %38 = call double @_return_types_fun_double_from_args_StringArray(i8** %-1)
+                                                                         ^
+
