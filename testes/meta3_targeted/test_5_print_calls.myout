@@ -1,0 +1,167 @@
+Line 39, col 26: Incompatible type String[] in System.out.print statement
+Line 40, col 26: Incompatible type void in System.out.print statement
+Line 43, col 13: Cannot find symbol intF(double)
+Line 43, col 11: Operator = cannot be applied to types int, undef
+Line 44, col 13: Cannot find symbol intF(boolean)
+Line 44, col 11: Operator = cannot be applied to types int, undef
+Line 45, col 13: Cannot find symbol intF(String[])
+Line 45, col 11: Operator = cannot be applied to types int, undef
+Line 46, col 13: Cannot find symbol intF()
+Line 46, col 11: Operator = cannot be applied to types int, undef
+Line 47, col 13: Cannot find symbol intF(int,int)
+Line 47, col 11: Operator = cannot be applied to types int, undef
+Line 48, col 13: Cannot find symbol nonExistent()
+Line 48, col 11: Operator = cannot be applied to types int, undef
+Line 49, col 18: Cannot find symbol nonExistent()
+Line 49, col 13: Cannot find symbol intF(undef)
+Line 49, col 11: Operator = cannot be applied to types int, undef
+===== Class TestPrintCalls Symbol Table =====
+voidF	()	void
+intF	(int)	int
+doubleF	()	double
+boolF	()	boolean
+main	(String[])	void
+
+===== Method voidF() Symbol Table =====
+return		void
+
+===== Method intF(int) Symbol Table =====
+return		int
+x		int	param
+
+===== Method doubleF() Symbol Table =====
+return		double
+
+===== Method boolF() Symbol Table =====
+return		boolean
+
+===== Method main(String[]) Symbol Table =====
+return		void
+args		String[]	param
+a		int
+b		double
+x		boolean
+
+Program
+..Identifier(TestPrintCalls)
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(voidF)
+......MethodParams
+....MethodBody
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(intF)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(x)
+....MethodBody
+......Return
+........Identifier(x) - int
+..MethodDecl
+....MethodHeader
+......Double
+......Identifier(doubleF)
+......MethodParams
+....MethodBody
+......Return
+........Decimal(1.0) - double
+..MethodDecl
+....MethodHeader
+......Bool
+......Identifier(boolF)
+......MethodParams
+....MethodBody
+......Return
+........BoolLit(true) - boolean
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(main)
+......MethodParams
+........ParamDecl
+..........StringArray
+..........Identifier(args)
+....MethodBody
+......VarDecl
+........Int
+........Identifier(a)
+......VarDecl
+........Double
+........Identifier(b)
+......VarDecl
+........Bool
+........Identifier(x)
+......Assign - int
+........Identifier(a) - int
+........Natural(1) - int
+......Assign - double
+........Identifier(b) - double
+........Decimal(2.0) - double
+......Assign - boolean
+........Identifier(x) - boolean
+........BoolLit(true) - boolean
+......Print
+........Identifier(a) - int
+......Print
+........Identifier(b) - double
+......Print
+........Identifier(x) - boolean
+......Print
+........StrLit("hello") - String
+......Print
+........Length - int
+..........Identifier(args) - String[]
+......Print
+........Call - int
+..........Identifier(intF) - (int)
+..........Identifier(a) - int
+......Print
+........Call - double
+..........Identifier(doubleF) - ()
+......Print
+........Call - boolean
+..........Identifier(boolF) - ()
+......Print
+........Identifier(args) - String[]
+......Print
+........Call - void
+..........Identifier(voidF) - ()
+......Assign - int
+........Identifier(a) - int
+........Call - undef
+..........Identifier(intF) - undef
+..........Identifier(b) - double
+......Assign - int
+........Identifier(a) - int
+........Call - undef
+..........Identifier(intF) - undef
+..........Identifier(x) - boolean
+......Assign - int
+........Identifier(a) - int
+........Call - undef
+..........Identifier(intF) - undef
+..........Identifier(args) - String[]
+......Assign - int
+........Identifier(a) - int
+........Call - undef
+..........Identifier(intF) - undef
+......Assign - int
+........Identifier(a) - int
+........Call - undef
+..........Identifier(intF) - undef
+..........Identifier(a) - int
+..........Identifier(a) - int
+......Assign - int
+........Identifier(a) - int
+........Call - undef
+..........Identifier(nonExistent) - undef
+......Assign - int
+........Identifier(a) - int
+........Call - undef
+..........Identifier(intF) - undef
+..........Call - undef
+............Identifier(nonExistent) - undef

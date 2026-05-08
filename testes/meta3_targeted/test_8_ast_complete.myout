@@ -1,0 +1,267 @@
+===== Class TestASTComplete Symbol Table =====
+counter		int
+rate		double
+active		boolean
+factorial	(int)	int
+power	(double,int)	double
+isEven	(int)	boolean
+main	(String[])	void
+
+===== Method factorial(int) Symbol Table =====
+return		int
+n		int	param
+r		int
+
+===== Method power(double,int) Symbol Table =====
+return		double
+base		double	param
+exp		int	param
+r		double
+i		int
+
+===== Method isEven(int) Symbol Table =====
+return		boolean
+n		int	param
+
+===== Method main(String[]) Symbol Table =====
+return		void
+args		String[]	param
+a		int
+b		int
+d		double
+x		boolean
+
+Program
+..Identifier(TestASTComplete)
+..FieldDecl
+....Int
+....Identifier(counter)
+..FieldDecl
+....Double
+....Identifier(rate)
+..FieldDecl
+....Bool
+....Identifier(active)
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(factorial)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(n)
+....MethodBody
+......VarDecl
+........Int
+........Identifier(r)
+......If
+........Le - boolean
+..........Identifier(n) - int
+..........Natural(1) - int
+........Assign - int
+..........Identifier(r) - int
+..........Natural(1) - int
+........Assign - int
+..........Identifier(r) - int
+..........Mul - int
+............Identifier(n) - int
+............Call - int
+..............Identifier(factorial) - (int)
+..............Sub - int
+................Identifier(n) - int
+................Natural(1) - int
+......Return
+........Identifier(r) - int
+..MethodDecl
+....MethodHeader
+......Double
+......Identifier(power)
+......MethodParams
+........ParamDecl
+..........Double
+..........Identifier(base)
+........ParamDecl
+..........Int
+..........Identifier(exp)
+....MethodBody
+......VarDecl
+........Double
+........Identifier(r)
+......VarDecl
+........Int
+........Identifier(i)
+......Assign - double
+........Identifier(r) - double
+........Decimal(1.0) - double
+......Assign - int
+........Identifier(i) - int
+........Natural(0) - int
+......While
+........Lt - boolean
+..........Identifier(i) - int
+..........Identifier(exp) - int
+........Block
+..........Assign - double
+............Identifier(r) - double
+............Mul - double
+..............Identifier(r) - double
+..............Identifier(base) - double
+..........Assign - int
+............Identifier(i) - int
+............Add - int
+..............Identifier(i) - int
+..............Natural(1) - int
+......Return
+........Identifier(r) - double
+..MethodDecl
+....MethodHeader
+......Bool
+......Identifier(isEven)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(n)
+....MethodBody
+......Return
+........Eq - boolean
+..........Sub - int
+............Identifier(n) - int
+............Mul - int
+..............Div - int
+................Identifier(n) - int
+................Natural(2) - int
+..............Natural(2) - int
+..........Natural(0) - int
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(main)
+......MethodParams
+........ParamDecl
+..........StringArray
+..........Identifier(args)
+....MethodBody
+......VarDecl
+........Int
+........Identifier(a)
+......VarDecl
+........Int
+........Identifier(b)
+......VarDecl
+........Double
+........Identifier(d)
+......VarDecl
+........Bool
+........Identifier(x)
+......Assign - int
+........Identifier(a) - int
+........ParseArgs - int
+..........Identifier(args) - String[]
+..........Natural(0) - int
+......Assign - int
+........Identifier(b) - int
+........ParseArgs - int
+..........Identifier(args) - String[]
+..........Natural(1) - int
+......Assign - int
+........Identifier(counter) - int
+........Add - int
+..........Identifier(a) - int
+..........Identifier(b) - int
+......Assign - double
+........Identifier(rate) - double
+........Call - double
+..........Identifier(power) - (double,int)
+..........Decimal(2.0) - double
+..........Identifier(a) - int
+......Assign - boolean
+........Identifier(active) - boolean
+........Call - boolean
+..........Identifier(isEven) - (int)
+..........Identifier(a) - int
+......Assign - boolean
+........Identifier(x) - boolean
+........And - boolean
+..........Identifier(active) - boolean
+..........Gt - boolean
+............Identifier(a) - int
+............Natural(0) - int
+......Assign - boolean
+........Identifier(x) - boolean
+........Or - boolean
+..........Not - boolean
+............Identifier(active) - boolean
+..........Lt - boolean
+............Identifier(b) - int
+............Natural(0) - int
+......Print
+........Call - int
+..........Identifier(factorial) - (int)
+..........Identifier(a) - int
+......Print
+........Call - double
+..........Identifier(power) - (double,int)
+..........Identifier(rate) - double
+..........Identifier(b) - int
+......Print
+........Call - boolean
+..........Identifier(isEven) - (int)
+..........Identifier(counter) - int
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(factorial) - (int)
+..........Identifier(b) - int
+......Assign - double
+........Identifier(d) - double
+........Call - double
+..........Identifier(power) - (double,int)
+..........Decimal(2.5) - double
+..........Identifier(a) - int
+......If
+........Gt - boolean
+..........Length - int
+............Identifier(args) - String[]
+..........Natural(0) - int
+........Assign - int
+..........Identifier(a) - int
+..........ParseArgs - int
+............Identifier(args) - String[]
+............Sub - int
+..............Length - int
+................Identifier(args) - String[]
+..............Natural(1) - int
+........Block
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(factorial) - (int)
+..........Call - int
+............Identifier(factorial) - (int)
+............Identifier(b) - int
+......Assign - double
+........Identifier(d) - double
+........Call - double
+..........Identifier(power) - (double,int)
+..........Call - double
+............Identifier(power) - (double,int)
+............Decimal(2.0) - double
+............Natural(1) - int
+..........Natural(2) - int
+......Assign - double
+........Identifier(d) - double
+........Add - int
+..........Identifier(a) - int
+..........Identifier(b) - int
+......Assign - double
+........Identifier(d) - double
+........Mul - double
+..........Identifier(a) - int
+..........Decimal(1.5) - double
+......Assign - double
+........Identifier(d) - double
+........Mul - double
+..........Add - int
+............Identifier(a) - int
+............Identifier(b) - int
+..........Decimal(2.0) - double

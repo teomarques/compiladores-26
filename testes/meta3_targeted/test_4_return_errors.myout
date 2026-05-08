@@ -1,0 +1,198 @@
+Line 10, col 16: Incompatible type int in return statement
+Line 15, col 16: Incompatible type int in return statement
+Line 20, col 9: Incompatible type void in return statement
+Line 28, col 16: Incompatible type double in return statement
+Line 32, col 16: Incompatible type boolean in return statement
+Line 45, col 16: Incompatible type boolean in return statement
+Line 54, col 16: Incompatible type int in return statement
+Line 58, col 16: Incompatible type double in return statement
+Line 63, col 16: Incompatible type void in return statement
+===== Class TestReturnErrors Symbol Table =====
+voidMethod	()	void
+voidMethod2	()	void
+voidMethod3	()	void
+intMethod	()	int
+intMethod2	()	int
+intMethod3	()	int
+intMethod4	()	int
+doubleMethod	()	double
+doubleMethod2	()	double
+doubleMethod3	()	double
+boolMethod	()	boolean
+boolMethod2	()	boolean
+boolMethod3	()	boolean
+callsVoid	()	int
+main	(String[])	void
+
+===== Method voidMethod() Symbol Table =====
+return		void
+
+===== Method voidMethod2() Symbol Table =====
+return		void
+
+===== Method voidMethod3() Symbol Table =====
+return		void
+x		int
+
+===== Method intMethod() Symbol Table =====
+return		int
+
+===== Method intMethod2() Symbol Table =====
+return		int
+
+===== Method intMethod3() Symbol Table =====
+return		int
+
+===== Method intMethod4() Symbol Table =====
+return		int
+
+===== Method doubleMethod() Symbol Table =====
+return		double
+
+===== Method doubleMethod2() Symbol Table =====
+return		double
+
+===== Method doubleMethod3() Symbol Table =====
+return		double
+
+===== Method boolMethod() Symbol Table =====
+return		boolean
+
+===== Method boolMethod2() Symbol Table =====
+return		boolean
+
+===== Method boolMethod3() Symbol Table =====
+return		boolean
+
+===== Method callsVoid() Symbol Table =====
+return		int
+
+===== Method main(String[]) Symbol Table =====
+return		void
+args		String[]	param
+
+Program
+..Identifier(TestReturnErrors)
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(voidMethod)
+......MethodParams
+....MethodBody
+......Return
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(voidMethod2)
+......MethodParams
+....MethodBody
+......Return
+........Natural(5) - int
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(voidMethod3)
+......MethodParams
+....MethodBody
+......VarDecl
+........Int
+........Identifier(x)
+......Return
+........Identifier(x) - int
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(intMethod)
+......MethodParams
+....MethodBody
+......Return
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(intMethod2)
+......MethodParams
+....MethodBody
+......Return
+........Natural(5) - int
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(intMethod3)
+......MethodParams
+....MethodBody
+......Return
+........Decimal(5.5) - double
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(intMethod4)
+......MethodParams
+....MethodBody
+......Return
+........BoolLit(true) - boolean
+..MethodDecl
+....MethodHeader
+......Double
+......Identifier(doubleMethod)
+......MethodParams
+....MethodBody
+......Return
+........Natural(5) - int
+..MethodDecl
+....MethodHeader
+......Double
+......Identifier(doubleMethod2)
+......MethodParams
+....MethodBody
+......Return
+........Decimal(5.5) - double
+..MethodDecl
+....MethodHeader
+......Double
+......Identifier(doubleMethod3)
+......MethodParams
+....MethodBody
+......Return
+........BoolLit(true) - boolean
+..MethodDecl
+....MethodHeader
+......Bool
+......Identifier(boolMethod)
+......MethodParams
+....MethodBody
+......Return
+........BoolLit(true) - boolean
+..MethodDecl
+....MethodHeader
+......Bool
+......Identifier(boolMethod2)
+......MethodParams
+....MethodBody
+......Return
+........Natural(1) - int
+..MethodDecl
+....MethodHeader
+......Bool
+......Identifier(boolMethod3)
+......MethodParams
+....MethodBody
+......Return
+........Decimal(1.0) - double
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(callsVoid)
+......MethodParams
+....MethodBody
+......Return
+........Call - void
+..........Identifier(voidMethod) - ()
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(main)
+......MethodParams
+........ParamDecl
+..........StringArray
+..........Identifier(args)
+....MethodBody

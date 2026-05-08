@@ -1000,17 +1000,16 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             c = n->children;
             if (c) c = c->next;
 
-            /* Track condition type error to report after body processing */
-            JType cond_type = JT_BOOLEAN;
-            int cond_line = 0, cond_col = 0;
-            int has_type_error = 0;
-
+            /* Save condition info for deferred error reporting */
+            JType cond_type_if = JT_BOOLEAN;
+            int cond_line_if = 0, cond_col_if = 0;
+            int has_if_error = 0;
             if (c && c->node) {
-                cond_type = infer_type(c->node, method, ct);
-                if (cond_type != JT_BOOLEAN) {
-                    cond_line = c->node->line;
-                    cond_col = c->node->col;
-                    has_type_error = 1;
+                cond_type_if = infer_type(c->node, method, ct);
+                if (cond_type_if != JT_BOOLEAN) {
+                    cond_line_if = c->node->line;
+                    cond_col_if = c->node->col;
+                    has_if_error = 1;
                 }
             }
 
@@ -1022,10 +1021,10 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             c = c && c->next ? c->next : NULL;
             if (c && c->node) check_statement(c->node, method, ct);
 
-            /* Report type error after processing blocks */
-            if (has_type_error) {
+            /* Report condition error after body (deferred) */
+            if (has_if_error) {
                 printf("Line %d, col %d: Incompatible type %s in if statement\n",
-                       cond_line, cond_col, jtype_to_string(cond_type));
+                       cond_line_if, cond_col_if, jtype_to_string(cond_type_if));
             }
             break;
         }
@@ -1034,17 +1033,16 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             c = n->children;
             if (c) c = c->next;
 
-            /* Track condition type error to report after body processing */
-            JType cond_type = JT_BOOLEAN;
-            int cond_line = 0, cond_col = 0;
-            int has_type_error = 0;
-
+            /* Save condition info for deferred error reporting */
+            JType cond_type_while = JT_BOOLEAN;
+            int cond_line_while = 0, cond_col_while = 0;
+            int has_while_error = 0;
             if (c && c->node) {
-                cond_type = infer_type(c->node, method, ct);
-                if (cond_type != JT_BOOLEAN) {
-                    cond_line = c->node->line;
-                    cond_col = c->node->col;
-                    has_type_error = 1;
+                cond_type_while = infer_type(c->node, method, ct);
+                if (cond_type_while != JT_BOOLEAN) {
+                    cond_line_while = c->node->line;
+                    cond_col_while = c->node->col;
+                    has_while_error = 1;
                 }
             }
 
@@ -1052,10 +1050,10 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             c = c && c->next ? c->next : NULL;
             if (c && c->node) check_statement(c->node, method, ct);
 
-            /* Report type error after processing body */
-            if (has_type_error) {
+            /* Report condition error after body (deferred) */
+            if (has_while_error) {
                 printf("Line %d, col %d: Incompatible type %s in while statement\n",
-                       cond_line, cond_col, jtype_to_string(cond_type));
+                       cond_line_while, cond_col_while, jtype_to_string(cond_type_while));
             }
             break;
         }

@@ -8,8 +8,10 @@
 
 ### Current Status
 - ✅ **All local tests passing (361/361)**
-- ✅ **Mooshak submission: 234/250 points (93.6%)**
-- ❌ **Missing 16 points from 3 categories**
+- ✅ **Mooshak submission: 242/250 points (96.8%)** [Improved from 234]
+- ❌ **Missing 8 points from 2 categories:**
+  - 4 points on Annotated AST - Valid Programs
+  - 4 points on Semantic Errors - Expressions and Statements
 
 ---
 

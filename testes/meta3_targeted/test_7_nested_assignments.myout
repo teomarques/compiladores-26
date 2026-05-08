@@ -1,0 +1,147 @@
+Line 25, col 15: Incompatible type int in if statement
+===== Class TestNestedAssignments Symbol Table =====
+identity	(int)	int
+main	(String[])	void
+
+===== Method identity(int) Symbol Table =====
+return		int
+x		int	param
+
+===== Method main(String[]) Symbol Table =====
+return		void
+args		String[]	param
+a		int
+b		int
+c		int
+d		double
+e		double
+x		boolean
+
+Program
+..Identifier(TestNestedAssignments)
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(identity)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(x)
+....MethodBody
+......Return
+........Identifier(x) - int
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(main)
+......MethodParams
+........ParamDecl
+..........StringArray
+..........Identifier(args)
+....MethodBody
+......VarDecl
+........Int
+........Identifier(a)
+......VarDecl
+........Int
+........Identifier(b)
+......VarDecl
+........Int
+........Identifier(c)
+......VarDecl
+........Double
+........Identifier(d)
+......VarDecl
+........Double
+........Identifier(e)
+......VarDecl
+........Bool
+........Identifier(x)
+......Assign - int
+........Identifier(a) - int
+........Assign - int
+..........Identifier(b) - int
+..........Assign - int
+............Identifier(c) - int
+............Natural(5) - int
+......If
+........Eq - boolean
+..........Assign - int
+............Identifier(a) - int
+............Natural(5) - int
+..........Natural(5) - int
+........Block
+........Block
+......If
+........Assign - int
+..........Identifier(a) - int
+..........Natural(10) - int
+........Block
+........Block
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(identity) - (int)
+..........Assign - int
+............Identifier(b) - int
+............Natural(5) - int
+......Print
+........Assign - int
+..........Identifier(a) - int
+..........Assign - int
+............Identifier(b) - int
+............Assign - int
+..............Identifier(c) - int
+..............Natural(1) - int
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(identity) - (int)
+..........Call - int
+............Identifier(identity) - (int)
+............Call - int
+..............Identifier(identity) - (int)
+..............Identifier(b) - int
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(identity) - (int)
+..........Add - int
+............Identifier(b) - int
+............Mul - int
+..............Call - int
+................Identifier(identity) - (int)
+................Identifier(c) - int
+..............Natural(2) - int
+......Assign - boolean
+........Identifier(x) - boolean
+........Eq - boolean
+..........Assign - int
+............Identifier(a) - int
+............Identifier(b) - int
+..........Assign - int
+............Identifier(b) - int
+............Identifier(c) - int
+......Assign - boolean
+........Identifier(x) - boolean
+........Gt - boolean
+..........Assign - int
+............Identifier(a) - int
+............Natural(5) - int
+..........Assign - int
+............Identifier(c) - int
+............Natural(3) - int
+......Assign - double
+........Identifier(d) - double
+........Assign - int
+..........Identifier(a) - int
+..........Natural(5) - int
+......Assign - double
+........Identifier(e) - double
+........Assign - int
+..........Identifier(a) - int
+..........Assign - int
+............Identifier(b) - int
+............Assign - int
+..............Identifier(c) - int
+..............Natural(1) - int

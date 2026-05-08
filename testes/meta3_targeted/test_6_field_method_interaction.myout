@@ -1,0 +1,116 @@
+Line 25, col 11: Operator = cannot be applied to types int, double
+Line 26, col 11: Operator = cannot be applied to types double, boolean
+Line 27, col 11: Operator = cannot be applied to types boolean, int
+===== Class TestFieldMethodInteraction Symbol Table =====
+x		int
+y		double
+z		boolean
+x	(int)	int
+y	(double)	double
+useFields	()	void
+main	(String[])	void
+
+===== Method x(int) Symbol Table =====
+return		int
+param		int	param
+
+===== Method y(double) Symbol Table =====
+return		double
+param		double	param
+
+===== Method useFields() Symbol Table =====
+return		void
+
+===== Method main(String[]) Symbol Table =====
+return		void
+args		String[]	param
+local		int
+x		int
+
+Program
+..Identifier(TestFieldMethodInteraction)
+..FieldDecl
+....Int
+....Identifier(x)
+..FieldDecl
+....Double
+....Identifier(y)
+..FieldDecl
+....Bool
+....Identifier(z)
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(x)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(param)
+....MethodBody
+......Return
+........Identifier(param) - int
+..MethodDecl
+....MethodHeader
+......Double
+......Identifier(y)
+......MethodParams
+........ParamDecl
+..........Double
+..........Identifier(param)
+....MethodBody
+......Return
+........Identifier(param) - double
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(useFields)
+......MethodParams
+....MethodBody
+......Assign - int
+........Identifier(x) - int
+........Natural(5) - int
+......Assign - double
+........Identifier(y) - double
+........Decimal(1.5) - double
+......Assign - boolean
+........Identifier(z) - boolean
+........BoolLit(true) - boolean
+......Assign - int
+........Identifier(x) - int
+........Identifier(y) - double
+......Assign - double
+........Identifier(y) - double
+........Identifier(z) - boolean
+......Assign - boolean
+........Identifier(z) - boolean
+........Identifier(x) - int
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(main)
+......MethodParams
+........ParamDecl
+..........StringArray
+..........Identifier(args)
+....MethodBody
+......VarDecl
+........Int
+........Identifier(local)
+......Assign - int
+........Identifier(local) - int
+........Identifier(x) - int
+......Assign - int
+........Identifier(local) - int
+........Call - int
+..........Identifier(x) - (int)
+..........Identifier(local) - int
+......Call - void
+........Identifier(useFields) - ()
+......Assign - int
+........Identifier(local) - int
+........Call - int
+..........Identifier(x) - (int)
+..........Natural(5) - int
+......VarDecl
+........Int
+........Identifier(x)

@@ -1,0 +1,271 @@
+===== Class TestMethodSignatureAnnotation Symbol Table =====
+noArgs	()	int
+oneArg	(int)	int
+twoArgs	(int,int)	int
+manyArgs	(int,double,boolean)	int
+over	(int)	int
+over	(double)	double
+over	(int,int)	int
+recur	(int)	int
+main	(String[])	void
+
+===== Method noArgs() Symbol Table =====
+return		int
+
+===== Method oneArg(int) Symbol Table =====
+return		int
+x		int	param
+
+===== Method twoArgs(int,int) Symbol Table =====
+return		int
+x		int	param
+y		int	param
+
+===== Method manyArgs(int,double,boolean) Symbol Table =====
+return		int
+a		int	param
+b		double	param
+c		boolean	param
+
+===== Method over(int) Symbol Table =====
+return		int
+x		int	param
+
+===== Method over(double) Symbol Table =====
+return		double
+x		double	param
+
+===== Method over(int,int) Symbol Table =====
+return		int
+x		int	param
+y		int	param
+
+===== Method recur(int) Symbol Table =====
+return		int
+n		int	param
+
+===== Method main(String[]) Symbol Table =====
+return		void
+args		String[]	param
+a		int
+b		double
+x		boolean
+
+Program
+..Identifier(TestMethodSignatureAnnotation)
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(noArgs)
+......MethodParams
+....MethodBody
+......Return
+........Natural(1) - int
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(oneArg)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(x)
+....MethodBody
+......Return
+........Identifier(x) - int
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(twoArgs)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(x)
+........ParamDecl
+..........Int
+..........Identifier(y)
+....MethodBody
+......Return
+........Add - int
+..........Identifier(x) - int
+..........Identifier(y) - int
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(manyArgs)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(a)
+........ParamDecl
+..........Double
+..........Identifier(b)
+........ParamDecl
+..........Bool
+..........Identifier(c)
+....MethodBody
+......Return
+........Identifier(a) - int
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(over)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(x)
+....MethodBody
+......Return
+........Identifier(x) - int
+..MethodDecl
+....MethodHeader
+......Double
+......Identifier(over)
+......MethodParams
+........ParamDecl
+..........Double
+..........Identifier(x)
+....MethodBody
+......Return
+........Identifier(x) - double
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(over)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(x)
+........ParamDecl
+..........Int
+..........Identifier(y)
+....MethodBody
+......Return
+........Add - int
+..........Identifier(x) - int
+..........Identifier(y) - int
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(recur)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(n)
+....MethodBody
+......If
+........Le - boolean
+..........Identifier(n) - int
+..........Natural(1) - int
+........Return
+..........Natural(1) - int
+........Block
+......Return
+........Mul - int
+..........Identifier(n) - int
+..........Call - int
+............Identifier(recur) - (int)
+............Sub - int
+..............Identifier(n) - int
+..............Natural(1) - int
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(main)
+......MethodParams
+........ParamDecl
+..........StringArray
+..........Identifier(args)
+....MethodBody
+......VarDecl
+........Int
+........Identifier(a)
+......VarDecl
+........Double
+........Identifier(b)
+......VarDecl
+........Bool
+........Identifier(x)
+......Assign - int
+........Identifier(a) - int
+........Natural(1) - int
+......Assign - double
+........Identifier(b) - double
+........Decimal(1.5) - double
+......Assign - boolean
+........Identifier(x) - boolean
+........BoolLit(true) - boolean
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(noArgs) - ()
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(oneArg) - (int)
+..........Identifier(a) - int
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(twoArgs) - (int,int)
+..........Identifier(a) - int
+..........Identifier(a) - int
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(manyArgs) - (int,double,boolean)
+..........Identifier(a) - int
+..........Identifier(b) - double
+..........Identifier(x) - boolean
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(over) - (int)
+..........Identifier(a) - int
+......Assign - double
+........Identifier(b) - double
+........Call - double
+..........Identifier(over) - (double)
+..........Identifier(b) - double
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(over) - (int,int)
+..........Identifier(a) - int
+..........Identifier(a) - int
+......Assign - double
+........Identifier(b) - double
+........Call - int
+..........Identifier(over) - (int)
+..........Identifier(a) - int
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(recur) - (int)
+..........Identifier(a) - int
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(oneArg) - (int)
+..........Call - int
+............Identifier(twoArgs) - (int,int)
+............Natural(1) - int
+............Natural(2) - int
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(oneArg) - (int)
+..........Call - int
+............Identifier(over) - (int)
+............Identifier(a) - int
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(manyArgs) - (int,double,boolean)
+..........Call - int
+............Identifier(oneArg) - (int)
+............Identifier(a) - int
+..........Mul - double
+............Identifier(b) - double
+............Decimal(1.0) - double
+..........Not - boolean
+............Identifier(x) - boolean

@@ -1,0 +1,147 @@
+===== Class TestOverloadingWidening Symbol Table =====
+f	(int)	int
+f	(double)	double
+g	(int,int)	int
+g	(double,double)	double
+main	(String[])	void
+
+===== Method f(int) Symbol Table =====
+return		int
+x		int	param
+
+===== Method f(double) Symbol Table =====
+return		double
+x		double	param
+
+===== Method g(int,int) Symbol Table =====
+return		int
+x		int	param
+y		int	param
+
+===== Method g(double,double) Symbol Table =====
+return		double
+x		double	param
+y		double	param
+
+===== Method main(String[]) Symbol Table =====
+return		void
+args		String[]	param
+a		int
+b		double
+
+Program
+..Identifier(TestOverloadingWidening)
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(f)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(x)
+....MethodBody
+......Return
+........Identifier(x) - int
+..MethodDecl
+....MethodHeader
+......Double
+......Identifier(f)
+......MethodParams
+........ParamDecl
+..........Double
+..........Identifier(x)
+....MethodBody
+......Return
+........Identifier(x) - double
+..MethodDecl
+....MethodHeader
+......Int
+......Identifier(g)
+......MethodParams
+........ParamDecl
+..........Int
+..........Identifier(x)
+........ParamDecl
+..........Int
+..........Identifier(y)
+....MethodBody
+......Return
+........Add - int
+..........Identifier(x) - int
+..........Identifier(y) - int
+..MethodDecl
+....MethodHeader
+......Double
+......Identifier(g)
+......MethodParams
+........ParamDecl
+..........Double
+..........Identifier(x)
+........ParamDecl
+..........Double
+..........Identifier(y)
+....MethodBody
+......Return
+........Add - double
+..........Identifier(x) - double
+..........Identifier(y) - double
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(main)
+......MethodParams
+........ParamDecl
+..........StringArray
+..........Identifier(args)
+....MethodBody
+......VarDecl
+........Int
+........Identifier(a)
+......VarDecl
+........Double
+........Identifier(b)
+......Assign - int
+........Identifier(a) - int
+........Natural(5) - int
+......Assign - double
+........Identifier(b) - double
+........Decimal(3.14) - double
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(f) - (int)
+..........Identifier(a) - int
+......Assign - double
+........Identifier(b) - double
+........Call - double
+..........Identifier(f) - (double)
+..........Identifier(b) - double
+......Assign - int
+........Identifier(a) - int
+........Call - int
+..........Identifier(g) - (int,int)
+..........Identifier(a) - int
+..........Identifier(a) - int
+......Assign - double
+........Identifier(b) - double
+........Call - double
+..........Identifier(g) - (double,double)
+..........Identifier(b) - double
+..........Identifier(b) - double
+......Assign - double
+........Identifier(b) - double
+........Call - int
+..........Identifier(f) - (int)
+..........Identifier(a) - int
+......Assign - double
+........Identifier(b) - double
+........Call - double
+..........Identifier(g) - (double,double)
+..........Identifier(a) - int
+..........Identifier(b) - double
+......Assign - double
+........Identifier(b) - double
+........Call - double
+..........Identifier(g) - (double,double)
+..........Identifier(b) - double
+..........Identifier(a) - int

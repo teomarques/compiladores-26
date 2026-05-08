@@ -1,0 +1,186 @@
+Line 11, col 11: Operator = cannot be applied to types int, double
+Line 12, col 11: Operator = cannot be applied to types int, boolean
+Line 13, col 11: Operator = cannot be applied to types boolean, int
+Line 14, col 11: Operator = cannot be applied to types boolean, double
+Line 15, col 11: Operator = cannot be applied to types double, boolean
+Line 18, col 15: Operator + cannot be applied to types boolean, int
+Line 18, col 11: Operator = cannot be applied to types int, undef
+Line 19, col 15: Operator * cannot be applied to types boolean, double
+Line 19, col 11: Operator = cannot be applied to types int, undef
+Line 20, col 15: Operator - cannot be applied to types int, boolean
+Line 20, col 11: Operator = cannot be applied to types int, undef
+Line 21, col 15: Operator / cannot be applied to types int, boolean
+Line 21, col 11: Operator = cannot be applied to types int, undef
+Line 22, col 15: Operator % cannot be applied to types int, boolean
+Line 22, col 11: Operator = cannot be applied to types int, undef
+Line 25, col 15: Operator && cannot be applied to types int, double
+Line 26, col 15: Operator || cannot be applied to types int, boolean
+Line 27, col 13: Operator ! cannot be applied to type int
+Line 30, col 15: Operator << cannot be applied to types int, double
+Line 30, col 11: Operator = cannot be applied to types int, undef
+Line 31, col 15: Operator >> cannot be applied to types double, int
+Line 31, col 11: Operator = cannot be applied to types int, undef
+Line 32, col 15: Operator << cannot be applied to types boolean, int
+Line 32, col 11: Operator = cannot be applied to types int, undef
+Line 35, col 15: Operator < cannot be applied to types boolean, int
+Line 36, col 15: Operator > cannot be applied to types boolean, double
+Line 37, col 15: Operator <= cannot be applied to types boolean, int
+Line 40, col 18: Operator == cannot be applied to types String[], String[]
+Line 43, col 14: Operator .length cannot be applied to type int
+Line 44, col 14: Operator .length cannot be applied to type double
+Line 45, col 14: Operator .length cannot be applied to type boolean
+Line 48, col 26: Incompatible type String[] in System.out.print statement
+Line 51, col 13: Incompatible type int in if statement
+Line 52, col 13: Incompatible type double in if statement
+Line 55, col 16: Incompatible type int in while statement
+Line 56, col 16: Incompatible type double in while statement
+Line 59, col 16: Incompatible type int in return statement
+===== Class TestExpressionErrors Symbol Table =====
+main	(String[])	void
+
+===== Method main(String[]) Symbol Table =====
+return		void
+args		String[]	param
+a		int
+b		double
+x		boolean
+
+Program
+..Identifier(TestExpressionErrors)
+..MethodDecl
+....MethodHeader
+......Void
+......Identifier(main)
+......MethodParams
+........ParamDecl
+..........StringArray
+..........Identifier(args)
+....MethodBody
+......VarDecl
+........Int
+........Identifier(a)
+......VarDecl
+........Double
+........Identifier(b)
+......VarDecl
+........Bool
+........Identifier(x)
+......Assign - int
+........Identifier(a) - int
+........Identifier(b) - double
+......Assign - int
+........Identifier(a) - int
+........Identifier(x) - boolean
+......Assign - boolean
+........Identifier(x) - boolean
+........Identifier(a) - int
+......Assign - boolean
+........Identifier(x) - boolean
+........Identifier(b) - double
+......Assign - double
+........Identifier(b) - double
+........Identifier(x) - boolean
+......Assign - int
+........Identifier(a) - int
+........Add - undef
+..........Identifier(x) - boolean
+..........Natural(1) - int
+......Assign - int
+........Identifier(a) - int
+........Mul - undef
+..........Identifier(x) - boolean
+..........Identifier(b) - double
+......Assign - int
+........Identifier(a) - int
+........Sub - undef
+..........Natural(1) - int
+..........Identifier(x) - boolean
+......Assign - int
+........Identifier(a) - int
+........Div - undef
+..........Natural(1) - int
+..........Identifier(x) - boolean
+......Assign - int
+........Identifier(a) - int
+........Mod - undef
+..........Natural(1) - int
+..........Identifier(x) - boolean
+......Assign - boolean
+........Identifier(x) - boolean
+........And - boolean
+..........Identifier(a) - int
+..........Identifier(b) - double
+......Assign - boolean
+........Identifier(x) - boolean
+........Or - boolean
+..........Identifier(a) - int
+..........Identifier(x) - boolean
+......Assign - boolean
+........Identifier(x) - boolean
+........Not - boolean
+..........Identifier(a) - int
+......Assign - int
+........Identifier(a) - int
+........Lshift - undef
+..........Identifier(a) - int
+..........Identifier(b) - double
+......Assign - int
+........Identifier(a) - int
+........Rshift - undef
+..........Identifier(b) - double
+..........Natural(1) - int
+......Assign - int
+........Identifier(a) - int
+........Lshift - undef
+..........Identifier(x) - boolean
+..........Natural(1) - int
+......Assign - boolean
+........Identifier(x) - boolean
+........Lt - boolean
+..........Identifier(x) - boolean
+..........Natural(1) - int
+......Assign - boolean
+........Identifier(x) - boolean
+........Gt - boolean
+..........Identifier(x) - boolean
+..........Identifier(b) - double
+......Assign - boolean
+........Identifier(x) - boolean
+........Le - boolean
+..........Identifier(x) - boolean
+..........Identifier(a) - int
+......Assign - boolean
+........Identifier(x) - boolean
+........Eq - boolean
+..........Identifier(args) - String[]
+..........Identifier(args) - String[]
+......Assign - int
+........Identifier(a) - int
+........Length - int
+..........Identifier(a) - int
+......Assign - int
+........Identifier(a) - int
+........Length - int
+..........Identifier(b) - double
+......Assign - int
+........Identifier(a) - int
+........Length - int
+..........Identifier(x) - boolean
+......Print
+........Identifier(args) - String[]
+......If
+........Identifier(a) - int
+........Block
+........Block
+......If
+........Identifier(b) - double
+........Block
+........Block
+......While
+........Identifier(a) - int
+........Block
+......While
+........Identifier(b) - double
+........Block
+......Return
+........Natural(5) - int
