@@ -1,7 +1,3 @@
-/* Autor:
- * Nome: João Afonso dos Santos Simões - Número: 2022236316
- */
-
 %{
 #include <stdio.h>
 #include <stdlib.h>

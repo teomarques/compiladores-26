@@ -1,5 +1,7 @@
-/* Autor:
- * Nome: João Afonso dos Santos Simões - Número: 2022236316
+/*
+ * Autores:
+ * Simão Tomás Botas Carvalho - 2021223055
+ * Teodoro Marques - 2023211717
  */
 
 %{
