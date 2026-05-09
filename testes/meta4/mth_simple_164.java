@@ -1,0 +1,1 @@
+class Test { public static int getVal() { return 164; } public static void main(String[] a) { System.out.print(getVal()); } }

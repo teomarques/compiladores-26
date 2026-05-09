@@ -1,0 +1,120 @@
+=== FAILED: ../testes/meta4/m4_full_mini.java ===
+0a1,2
+> 2
+> true
+--- LLVM IR ---
+@.fmt.d = private constant [3 x i8] c"%d\00"
+@.fmt.e = private constant [6 x i8] c"%.16e\00"
+@.fmt.s = private constant [3 x i8] c"%s\00"
+@.str.true = private constant [5 x i8] c"true\00"
+@.str.false = private constant [6 x i8] c"false\00"
+
+@.str.0 = private constant [2 x i8] c"\0A\00"
+
+@acc = global i32 0
+
+declare i32 @printf(i8*, ...)
+declare i32 @atoi(i8*)
+
+define i32 @bump__int(i32 %param.d) {
+entry:
+  %d = alloca i32
+  store i32 %param.d, i32* %d
+  %t0 = load i32, i32* @acc
+  %t1 = load i32, i32* %d
+  %t2 = add i32 %t0, %t1
+  store i32 %t2, i32* @acc
+  %t3 = load i32, i32* @acc
+  ret i32 %t3
+}
+
+define i32 @main(i32 %argc, i8** %argv) {
+entry:
+  %args.argc = alloca i32
+  %args.argv = alloca i8**
+  store i32 %argc, i32* %args.argc
+  store i8** %argv, i8*** %args.argv
+  %i = alloca i32
+  store i32 0, i32* %i
+  %t0 = add i32 0, 0
+  store i32 %t0, i32* @acc
+  %t1 = add i32 0, 0
+  store i32 %t1, i32* %i
+  br label %L0
+L0:
+  %t2 = load i32, i32* %i
+  %t3 = add i32 0, 4
+  %t4 = icmp slt i32 %t2, %t3
+  br i1 %t4, label %L1, label %L2
+L1:
+  %t5 = load i32, i32* %i
+  %t6 = add i32 0, 2
+  %t7 = srem i32 %t5, %t6
+  %t8 = add i32 0, 0
+  %t9 = icmp eq i32 %t7, %t8
+  br i1 %t9, label %L3, label %L4
+L3:
+  %t10 = load i32, i32* %i
+  %t11 = add i32 0, 2
+  %t12 = mul i32 %t10, %t11
+  %t13 = call i32 @bump__int(i32 %t12)
+  br label %L5
+L4:
+  %t14 = add i32 0, 1
+  %t15 = sub i32 0, %t14
+  %t16 = call i32 @bump__int(i32 %t15)
+  br label %L5
+L5:
+  %t17 = load i32, i32* %i
+  %t18 = add i32 0, 1
+  %t19 = add i32 %t17, %t18
+  store i32 %t19, i32* %i
+  br label %L0
+L2:
+  %t20 = load i32, i32* @acc
+  %t21 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
+  %t22 = call i32 (i8*, ...) @printf(i8* %t21, i32 %t20)
+  %t23 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t24 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t25 = call i32 (i8*, ...) @printf(i8* %t24, i8* %t23)
+  %t26 = alloca i1
+  store i1 0, i1* %t26
+  %t27 = alloca i1
+  store i1 1, i1* %t27
+  %t28 = add i1 0, 1
+  br i1 %t28, label %L6, label %L7
+L7:
+  %t29 = add i1 0, 0
+  store i1 %t29, i1* %t27
+  br label %L6
+L6:
+  %t30 = load i1, i1* %t27
+  br i1 %t30, label %L8, label %L9
+L8:
+  %t31 = add i1 0, 0
+  %t32 = add i1 0, 0
+  %t33 = xor i1 %t31, %t32
+  %t34 = xor i1 %t33, 1
+  store i1 %t34, i1* %t26
+  br label %L9
+L9:
+  %t35 = load i1, i1* %t26
+  br i1 %t35, label %L10, label %L11
+L10:
+  %t36 = getelementptr [5 x i8], [5 x i8]* @.str.true, i32 0, i32 0
+  %t37 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t38 = call i32 (i8*, ...) @printf(i8* %t37, i8* %t36)
+  br label %L12
+L11:
+  %t39 = getelementptr [6 x i8], [6 x i8]* @.str.false, i32 0, i32 0
+  %t40 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t41 = call i32 (i8*, ...) @printf(i8* %t40, i8* %t39)
+  br label %L12
+L12:
+  %t42 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t43 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t44 = call i32 (i8*, ...) @printf(i8* %t43, i8* %t42)
+  ret i32 0
+}
+
+--- STDERR ---

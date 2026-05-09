@@ -1,0 +1,1 @@
+class Test { public static void main(String[] a) { int i; i = 0; while (i < 3) { System.out.print(i); i = i + 1; } } }

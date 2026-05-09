@@ -1,0 +1,35 @@
+=== FAILED: ../testes/meta4/length.java ===
+1c1
+< 2
+---
+> 0
+--- LLVM IR ---
+@.fmt.d = private constant [3 x i8] c"%d\00"
+@.fmt.e = private constant [6 x i8] c"%.16e\00"
+@.fmt.s = private constant [3 x i8] c"%s\00"
+@.str.true = private constant [5 x i8] c"true\00"
+@.str.false = private constant [6 x i8] c"false\00"
+
+@.str.0 = private constant [2 x i8] c"\0A\00"
+
+
+declare i32 @printf(i8*, ...)
+declare i32 @atoi(i8*)
+
+define i32 @main(i32 %argc, i8** %argv) {
+entry:
+  %args.argc = alloca i32
+  %args.argv = alloca i8**
+  store i32 %argc, i32* %args.argc
+  store i8** %argv, i8*** %args.argv
+  %t0 = load i32, i32* %args.argc
+  %t1 = sub i32 %t0, 1
+  %t2 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
+  %t3 = call i32 (i8*, ...) @printf(i8* %t2, i32 %t1)
+  %t4 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t5 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t6 = call i32 (i8*, ...) @printf(i8* %t5, i8* %t4)
+  ret i32 0
+}
+
+--- STDERR ---

@@ -1,0 +1,1 @@
+class Test { public static void main(String[] a) { if (103 > 0) { System.out.print(1); } else { System.out.print(0); } } }

@@ -1,0 +1,1 @@
+class Test { public static double x; public static void main(String[] a) { x = 0.0; System.out.print(x); } }

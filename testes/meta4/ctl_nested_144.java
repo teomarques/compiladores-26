@@ -1,0 +1,1 @@
+class Test { public static void main(String[] a) { if (true) { if (false) { System.out.print(0); } else { System.out.print(144); } } } }

@@ -1,0 +1,1 @@
+class Test { public static void main(String[] a) { System.out.print(62 * 2); } }

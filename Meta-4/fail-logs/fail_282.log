@@ -1,0 +1,56 @@
+=== FAILED: ../testes/meta4/m4_essential_locals.java ===
+0a1,2
+> 7
+> 3.5000000000000000e+00
+--- LLVM IR ---
+@.fmt.d = private constant [3 x i8] c"%d\00"
+@.fmt.e = private constant [6 x i8] c"%.16e\00"
+@.fmt.s = private constant [3 x i8] c"%s\00"
+@.str.true = private constant [5 x i8] c"true\00"
+@.str.false = private constant [6 x i8] c"false\00"
+
+@.str.0 = private constant [2 x i8] c"\0A\00"
+
+
+declare i32 @printf(i8*, ...)
+declare i32 @atoi(i8*)
+
+define i32 @main(i32 %argc, i8** %argv) {
+entry:
+  %args.argc = alloca i32
+  %args.argv = alloca i8**
+  store i32 %argc, i32* %args.argc
+  store i8** %argv, i8*** %args.argv
+  %x = alloca i32
+  store i32 0, i32* %x
+  %y = alloca i32
+  store i32 0, i32* %y
+  %d = alloca double
+  store double 0.0, double* %d
+  %t0 = add i32 0, 5
+  store i32 %t0, i32* %x
+  %t1 = load i32, i32* %x
+  %t2 = add i32 0, 2
+  %t3 = add i32 %t1, %t2
+  store i32 %t3, i32* %y
+  %t4 = load i32, i32* %y
+  %t5 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
+  %t6 = call i32 (i8*, ...) @printf(i8* %t5, i32 %t4)
+  %t7 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t8 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t9 = call i32 (i8*, ...) @printf(i8* %t8, i8* %t7)
+  %t10 = load i32, i32* %y
+  %t11 = sitofp i32 %t10 to double
+  store double %t11, double* %d
+  %t12 = load double, double* %d
+  %t13 = fadd double 0.0, 2.00000000000000000e+00
+  %t14 = fdiv double %t12, %t13
+  %t15 = getelementptr [6 x i8], [6 x i8]* @.fmt.e, i32 0, i32 0
+  %t16 = call i32 (i8*, ...) @printf(i8* %t15, double %t14)
+  %t17 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t18 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t19 = call i32 (i8*, ...) @printf(i8* %t18, i8* %t17)
+  ret i32 0
+}
+
+--- STDERR ---
