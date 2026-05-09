@@ -13,3 +13,4 @@ jucompiler
 .claude/worktrees/
 .vscode/
 *.txt
+.aider*

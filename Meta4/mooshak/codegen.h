@@ -1,11 +1,9 @@
-/* codegen.h */
-#ifndef CODEGEN_H
-#define CODEGEN_H
+#ifndef _CODEGEN_H
+#define _CODEGEN_H
 
 #include "ast.h"
-#include "symtab.h"
+#include "semantic.h"
 
-/* Generate LLVM IR code from the annotated AST */
-void codegen(ASTNode *root, SymTable *tables);
+void codegen(struct node *root, ClassTable *ct);
 
 #endif

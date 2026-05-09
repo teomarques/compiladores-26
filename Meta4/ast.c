@@ -1,81 +1,59 @@
-/* ast.c - Meta 3 */
-#include <stdio.h>
+/*
+ * Autores:
+ *   Simão Tomás Botas Carvalho - 2021223055
+ *   Teodoro Marques          - 2023211717
+ */
+
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 #include "ast.h"
 
-static const char *node_names[] = {
-    "Program", "FieldDecl", "VarDecl",
-    "MethodDecl", "MethodHeader", "MethodParams", "ParamDecl", "MethodBody",
-    "Block", "If", "While", "Return", "Call", "Print", "ParseArgs", "Assign",
-    "Or", "And", "Eq", "Ne", "Lt", "Gt", "Le", "Ge",
-    "Add", "Sub", "Mul", "Div", "Mod", "Lshift", "Rshift", "Xor",
-    "Not", "Minus", "Plus", "Length",
-    "Bool", "BoolLit", "Double", "Decimal", "Identifier", "Int",
-    "Natural", "StrLit", "StringArray", "Void"
-};
+/* Definido em jucompiler.y */
+extern const char *category_name[];
 
-const char *node_type_name(NodeType type) { return node_names[type]; }
-
-ASTNode *ast_new_node(NodeType type, char *value) {
-    ASTNode *node = (ASTNode *)malloc(sizeof(ASTNode));
-    if (!node) { fprintf(stderr, "Error: malloc failed\n"); exit(1); }
-    node->type = type;
-    node->value = value ? strdup(value) : NULL;
-    node->annotation = NULL;
-    node->line = 0;
-    node->col = 0;
-    node->child = NULL;
-    node->sibling = NULL;
-    return node;
+struct node *newnode(enum category category, char *token, int line, int col)
+{
+    struct node *n = malloc(sizeof(struct node));
+    n->category = category;
+    n->token = token;
+    n->line = line;
+    n->col = col;
+    n->type_annot = NULL;
+    n->children = malloc(sizeof(struct node_list));
+    n->children->node = NULL;
+    n->children->next = NULL;
+    return n;
 }
 
-void ast_add_child(ASTNode *parent, ASTNode *child) {
-    if (!parent || !child) return;
-    if (!parent->child) { parent->child = child; }
-    else {
-        ASTNode *last = parent->child;
-        while (last->sibling) last = last->sibling;
-        last->sibling = child;
-    }
+void addchild(struct node *parent, struct node *child)
+{
+    struct node_list *c;
+    struct node_list *nl = malloc(sizeof(struct node_list));
+    nl->node = child;
+    nl->next = NULL;
+    c = parent->children;
+    while (c->next) c = c->next;
+    c->next = nl;
 }
 
-ASTNode *ast_add_sibling(ASTNode *node, ASTNode *sibling) {
-    if (!node) return sibling;
-    if (!sibling) return node;
-    ASTNode *last = node;
-    while (last->sibling) last = last->sibling;
-    last->sibling = sibling;
-    return node;
-}
+static void printast_rec(struct node *n, int depth)
+{
+    int i;
+    struct node_list *c;
+    if (!n) return;
 
-void ast_print(ASTNode *node, int depth) {
-    if (!node) return;
-    for (int i = 0; i < depth; i++) printf("..");
-    if (node->value)
-        printf("%s(%s)", node_type_name(node->type), node->value);
-    else
-        printf("%s", node_type_name(node->type));
-    if (node->annotation)
-        printf(" - %s", node->annotation);
+    for (i = 0; i < depth; i++) printf("..");
+
+    printf("%s", category_name[n->category]);
+    if (n->token) printf("(%s)", n->token);
+    if (n->type_annot) printf(" - %s", n->type_annot);
     printf("\n");
-    ast_print(node->child, depth + 1);
-    ast_print(node->sibling, depth);
+
+    for (c = n->children; c; c = c->next)
+        printast_rec(c->node, depth + 1);
 }
 
-void ast_free(ASTNode *node) {
-    if (!node) return;
-    ast_free(node->child);
-    ast_free(node->sibling);
-    if (node->value) free(node->value);
-    if (node->annotation) free(node->annotation);
-    free(node);
-}
-
-int ast_child_count(ASTNode *node) {
-    if (!node) return 0;
-    int count = 0;
-    ASTNode *c = node->child;
-    while (c) { count++; c = c->sibling; }
-    return count;
+void printast(struct node *root)
+{
+    printast_rec(root, 0);
 }

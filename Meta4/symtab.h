@@ -1,41 +1,68 @@
-/* symtab.h - Symbol Table */
-#ifndef SYMTAB_H
-#define SYMTAB_H
+/*
+ * Autores:
+ *   Simão Tomás Botas Carvalho - 2021223055
+ *   Teodoro Marques          - 2023211717
+ */
+
+#ifndef _SYMTAB_H
+#define _SYMTAB_H
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef enum {
+    JT_INT, JT_DOUBLE, JT_BOOLEAN, JT_VOID, JT_STRING_ARRAY, JT_STRING, JT_UNDEF
+} JType;
 
 typedef struct Symbol {
     char *name;
-    char *type;          /* "int", "double", "boolean", "void", "String []", "undef" */
-    int is_param;        /* 1 if parameter */
-    char *param_types;   /* for methods: "(int,double)" etc. NULL for variables */
+    JType type;
+    int is_param;
+    int line, col;
     struct Symbol *next;
 } Symbol;
 
-typedef struct SymTable {
-    char *name;          /* table name: "Class X" or "Method foo(int)" */
+typedef struct MethodEntry {
+    char *name;
+    JType return_type;
+    JType *param_types;
+    int n_params;
     Symbol *symbols;
-    Symbol *last;        /* for maintaining insertion order */
-    struct SymTable *next;
-} SymTable;
+    int line, col;
+    struct MethodEntry *next;
+} MethodEntry;
 
-/* Create a new symbol table with the given name */
-SymTable *symtab_create(const char *name);
+typedef enum { CE_FIELD, CE_METHOD } ClassEntryKind;
+typedef struct ClassEntryNode {
+    ClassEntryKind kind;
+    union {
+        Symbol *field;
+        MethodEntry *method;
+    };
+    struct ClassEntryNode *next;
+} ClassEntryNode;
 
-/* Add a symbol to a table. Returns 0 on success, 1 if already defined */
-int symtab_add(SymTable *table, const char *name, const char *type, int is_param, const char *param_types);
+typedef struct {
+    char *name;
+    Symbol *fields;
+    MethodEntry *methods;
+    ClassEntryNode *entries;
+} ClassTable;
 
-/* Look up a symbol by name in a table */
-Symbol *symtab_lookup(SymTable *table, const char *name);
+Symbol *create_symbol(const char *name, JType type, int is_param, int line, int col);
+void add_symbol_to_list(Symbol **list, Symbol *s);
+Symbol *find_symbol_in_list(Symbol *list, const char *name);
 
-/* Find all methods with a given name in a table */
-int symtab_find_methods(SymTable *table, const char *name, Symbol **results, int max_results);
+MethodEntry *create_method(const char *name, JType return_type, JType *param_types, int n_params, int line, int col);
+void add_method_to_list(MethodEntry **list, MethodEntry *m);
 
-/* Print a symbol table */
-void symtab_print(SymTable *table);
+ClassTable *create_class_table(const char *name);
+void add_class_entry(ClassTable *ct, ClassEntryKind kind, Symbol *field, MethodEntry *method);
 
-/* Free a symbol table */
-void symtab_free(SymTable *table);
+void print_symbol_tables(ClassTable *ct);
+void free_class_table(ClassTable *ct);
 
-/* Free entire chain of symbol tables */
-void symtab_free_all(SymTable *table);
+const char *jtype_to_string(JType t);
 
 #endif

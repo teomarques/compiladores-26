@@ -64,20 +64,6 @@ static int check_decimal_bounds(const char *text) {
     return 1;
 }
 
-const char *jtype_to_string(JType t)
-{
-    switch (t) {
-        case JT_INT: return "int";
-        case JT_DOUBLE: return "double";
-        case JT_BOOLEAN: return "boolean";
-        case JT_VOID: return "void";
-        case JT_STRING_ARRAY: return "String[]";
-        case JT_STRING: return "String";
-        case JT_UNDEF: return "undef";
-    }
-    return "unknown";
-}
-
 JType node_to_jtype(struct node *type_node)
 {
     if (!type_node) return JT_UNDEF;
@@ -100,41 +86,21 @@ static int is_reserved_id(const char *name)
 
 static Symbol *find_symbol(Symbol *symbols, const char *name)
 {
-    if (!name) return NULL;
-    for (Symbol *s = symbols; s; s = s->next) {
-        if (s->name && strcmp(s->name, name) == 0) return s;
-    }
-    return NULL;
+    return find_symbol_in_list(symbols, name);
 }
 
 static void add_symbol(Symbol **symbols, const char *name, JType type, int is_param, int line, int col)
 {
-    if (!name) return;
-    Symbol *s = malloc(sizeof(Symbol));
-    s->name = malloc(strlen(name) + 1);
-    strcpy(s->name, name);
-    s->type = type;
-    s->is_param = is_param;
-    s->line = line;
-    s->col = col;
-    s->next = NULL;
-
-    if (!*symbols) {
-        *symbols = s;
-    } else {
-        Symbol *tail = *symbols;
-        while (tail->next) tail = tail->next;
-        tail->next = s;
-    }
+    Symbol *s = create_symbol(name, type, is_param, line, col);
+    add_symbol_to_list(symbols, s);
 }
 
-static int types_compatible(JType actual, JType expected); /* Forward declaration */
+static int types_compatible(JType actual, JType expected);
 
 static MethodEntry *find_exact_method(MethodEntry *methods, const char *name, int n_params,
                                        JType *arg_types)
 {
     if (!name) return NULL;
-    /* Find a method with exact type match (all types must be equal) */
     for (MethodEntry *m = methods; m; m = m->next) {
         if (m->name && strcmp(m->name, name) == 0 && m->n_params == n_params) {
             int exact = 1;
@@ -183,48 +149,11 @@ static MethodEntry *find_compatible_method(MethodEntry *methods, const char *nam
     return first_match;
 }
 
-static void add_class_entry(ClassTable *ct, ClassEntryKind kind, Symbol *field, MethodEntry *method)
-{
-    ClassEntryNode *en = malloc(sizeof(ClassEntryNode));
-    en->kind = kind;
-    if (kind == CE_FIELD) en->field = field;
-    else en->method = method;
-    en->next = NULL;
-    if (!ct->entries) {
-        ct->entries = en;
-    } else {
-        ClassEntryNode *tail = ct->entries;
-        while (tail->next) tail = tail->next;
-        tail->next = en;
-    }
-}
-
 static MethodEntry *add_method(MethodEntry **methods, const char *name, JType return_type,
                                 JType *param_types, int n_params, int line, int col)
 {
-    MethodEntry *m = malloc(sizeof(MethodEntry));
-    m->name = malloc(strlen(name) + 1);
-    strcpy(m->name, name);
-    m->return_type = return_type;
-    m->n_params = n_params;
-    m->param_types = NULL;
-    if (n_params > 0) {
-        m->param_types = malloc(n_params * sizeof(JType));
-        memcpy(m->param_types, param_types, n_params * sizeof(JType));
-    }
-    m->symbols = NULL;
-    m->line = line;
-    m->col = col;
-    m->next = NULL;
-
-    if (!*methods) {
-        *methods = m;
-    } else {
-        MethodEntry *tail = *methods;
-        while (tail->next) tail = tail->next;
-        tail->next = m;
-    }
-
+    MethodEntry *m = create_method(name, return_type, param_types, n_params, line, col);
+    add_method_to_list(methods, m);
     return m;
 }
 
@@ -290,21 +219,16 @@ ClassTable *build_symbol_tables(struct node *program)
 {
     if (!program || program->category != N_Program) return NULL;
 
-    ClassTable *ct = malloc(sizeof(ClassTable));
-    ct->name = NULL;
-    ct->fields = NULL;
-    ct->methods = NULL;
-    ct->entries = NULL;
-
     /* First child is class Identifier (skip sentinel) */
     struct node_list *c = program->children;
     if (c) c = c->next;  /* Skip sentinel */
+    
+    char *class_id = "unknown";
     if (c && c->node && c->node->category == N_Identifier) {
-        if (c->node->token) {
-            ct->name = malloc(strlen(c->node->token) + 1);
-            strcpy(ct->name, c->node->token);
-        }
+        class_id = c->node->token;
     }
+
+    ClassTable *ct = create_class_table(class_id);
 
     /* Process FieldDecl and MethodDecl */
     for (c = c->next; c; c = c->next) {
@@ -477,86 +401,6 @@ ClassTable *build_symbol_tables(struct node *program)
     return ct;
 }
 
-void print_symbol_tables(ClassTable *ct)
-{
-    if (!ct || !ct->name) return;
-
-    printf("===== Class %s Symbol Table =====\n", ct->name);
-    for (ClassEntryNode *e = ct->entries; e; e = e->next) {
-        if (e->kind == CE_FIELD) {
-            printf("%s\t\t%s\n", e->field->name, jtype_to_string(e->field->type));
-        } else {
-            MethodEntry *m = e->method;
-            printf("%s\t(", m->name);
-            for (int i = 0; i < m->n_params; i++) {
-                if (i > 0) printf(",");
-                printf("%s", jtype_to_string(m->param_types[i]));
-            }
-            printf(")\t%s\n", jtype_to_string(m->return_type));
-        }
-    }
-
-    printf("\n");
-
-    for (MethodEntry *m = ct->methods; m; m = m->next) {
-        printf("===== Method %s(", m->name);
-        for (int i = 0; i < m->n_params; i++) {
-            if (i > 0) printf(",");
-            printf("%s", jtype_to_string(m->param_types[i]));
-        }
-        printf(") Symbol Table =====\n");
-
-        for (Symbol *s = m->symbols; s; s = s->next) {
-            printf("%s\t\t%s", s->name, jtype_to_string(s->type));
-            if (s->is_param) printf("\tparam");
-            printf("\n");
-        }
-
-        printf("\n");
-    }
-}
-
-void free_class_table(ClassTable *ct)
-{
-    if (!ct) return;
-
-    Symbol *f = ct->fields;
-    while (f) {
-        Symbol *tmp = f;
-        f = f->next;
-        free(tmp->name);
-        free(tmp);
-    }
-
-    MethodEntry *m = ct->methods;
-    while (m) {
-        MethodEntry *tmp = m;
-        m = m->next;
-
-        Symbol *s = tmp->symbols;
-        while (s) {
-            Symbol *stmp = s;
-            s = s->next;
-            free(stmp->name);
-            free(stmp);
-        }
-
-        if (tmp->param_types) free(tmp->param_types);
-        free(tmp->name);
-        free(tmp);
-    }
-
-    ClassEntryNode *en = ct->entries;
-    while (en) {
-        ClassEntryNode *tmp = en;
-        en = en->next;
-        free(tmp);
-    }
-
-    if (ct->name) free(ct->name);
-    free(ct);
-}
-
 static Symbol *lookup_symbol(const char *name, MethodEntry *method, ClassTable *ct)
 {
     if (!name || !method || !ct) return NULL;
@@ -689,26 +533,20 @@ static JType check_unary_op(struct node *n, MethodEntry *method, ClassTable *ct)
     switch (n->category) {
         case N_Not:
             if (op_type == JT_BOOLEAN) return JT_BOOLEAN;
-            if (op_type != JT_UNDEF) {
-                printf("Line %d, col %d: Operator ! cannot be applied to type %s\n",
-                       n->line, n->col, op_str);
-            }
+            printf("Line %d, col %d: Operator ! cannot be applied to type %s\n",
+                   n->line, n->col, op_str);
             return JT_BOOLEAN;
 
         case N_Minus: case N_Plus:
             if (op_type == JT_INT || op_type == JT_DOUBLE) return op_type;
-            if (op_type != JT_UNDEF) {
-                printf("Line %d, col %d: Operator %s cannot be applied to type %s\n",
-                       n->line, n->col, n->category == N_Minus ? "-" : "+", op_str);
-            }
+            printf("Line %d, col %d: Operator %s cannot be applied to type %s\n",
+                   n->line, n->col, n->category == N_Minus ? "-" : "+", op_str);
             return JT_UNDEF;
 
         case N_Length:
             if (op_type == JT_STRING_ARRAY) return JT_INT;
-            if (op_type != JT_UNDEF) {
-                printf("Line %d, col %d: Operator .length cannot be applied to type %s\n",
-                       n->line, n->col, op_str);
-            }
+            printf("Line %d, col %d: Operator .length cannot be applied to type %s\n",
+                   n->line, n->col, op_str);
             return JT_INT;
 
         default:
@@ -926,7 +764,7 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
             }
 
             /* Check argument types: first should be String[], second should be int */
-            if (arg1_type != JT_UNDEF && arg2_type != JT_UNDEF && (arg1_type != JT_STRING_ARRAY || arg2_type != JT_INT)) {
+            if (arg1_type != JT_STRING_ARRAY || arg2_type != JT_INT) {
                 printf("Line %d, col %d: Operator Integer.parseInt cannot be applied to types %s, %s\n",
                        n->line, n->col, jtype_to_string(arg1_type), jtype_to_string(arg2_type));
             }
@@ -956,8 +794,8 @@ static JType infer_type(struct node *n, MethodEntry *method, ClassTable *ct)
                 }
             }
 
-            /* Report error if either operand is NOT undef AND types are incompatible */
-            if (!is_param_assign && lhs_type != JT_UNDEF && rhs_type != JT_UNDEF && !types_compatible(rhs_type, lhs_type)) {
+            /* Report error if either operand is undef or types are incompatible */
+            if (!is_param_assign && (lhs_type == JT_UNDEF || rhs_type == JT_UNDEF || !types_compatible(rhs_type, lhs_type))) {
                 printf("Line %d, col %d: Operator = cannot be applied to types %s, %s\n",
                        n->line, n->col, jtype_to_string(lhs_type), jtype_to_string(rhs_type));
             }
@@ -1055,7 +893,6 @@ static void check_statement(struct node *n, MethodEntry *method, ClassTable *ct)
             if (c && c->node) {
                 JType ret_type = infer_type(c->node, method, ct);
                 if (ret_type == JT_VOID) {
-                    /* Returning a void expression is always an error */
                     printf("Line %d, col %d: Incompatible type void in return statement\n",
                            c->node->line, c->node->col);
                 } else if (ret_type != JT_UNDEF && method && !types_compatible(ret_type, method->return_type)) {
