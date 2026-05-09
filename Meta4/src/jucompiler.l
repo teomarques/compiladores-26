@@ -12,8 +12,7 @@
 #include <math.h>
 #include <limits.h>
 
-/* Header gerado por yacc/bison a partir do jucompiler.y.
- * (o teu Makefile deve gerar y.tab.h) */
+
 #include "y.tab.h"
 
 /* Executado antes de cada ação do lexer:
