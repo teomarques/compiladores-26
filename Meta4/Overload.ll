@@ -17,6 +17,7 @@ define void @overload__int(i32 %param.n) {
 entry:
   %n = alloca i32
   store i32 %param.n, i32* %n
+  %sc_tmp = alloca i1
   %t0 = getelementptr [19 x i8], [19 x i8]* @.str.0, i32 0, i32 0
   %t1 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
   %t2 = call i32 (i8*, ...) @printf(i8* %t1, i8* %t0)
@@ -25,6 +26,7 @@ entry:
 
 define void @overload__() {
 entry:
+  %sc_tmp = alloca i1
   %t0 = getelementptr [25 x i8], [25 x i8]* @.str.1, i32 0, i32 0
   %t1 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
   %t2 = call i32 (i8*, ...) @printf(i8* %t1, i8* %t0)
@@ -37,6 +39,7 @@ entry:
   %args.argv = alloca i8**
   store i32 %argc, i32* %args.argc
   store i8** %argv, i8*** %args.argv
+  %sc_tmp = alloca i1
   %t0 = load i32, i32* %args.argc
   %t1 = sub i32 %t0, 1
   %t2 = add i32 0, 0

@@ -3,13 +3,13 @@
 > 2
 > true
 --- LLVM IR ---
-@.fmt.d = private constant [3 x i8] c"%d\00"
-@.fmt.e = private constant [6 x i8] c"%.16e\00"
-@.fmt.s = private constant [3 x i8] c"%s\00"
-@.str.true = private constant [5 x i8] c"true\00"
-@.str.false = private constant [6 x i8] c"false\00"
+@.fmt.d = private unnamed_addr constant [3 x i8] c"%d\00"
+@.fmt.e = private unnamed_addr constant [6 x i8] c"%.16e\00"
+@.fmt.s = private unnamed_addr constant [3 x i8] c"%s\00"
+@.str.true = private unnamed_addr constant [5 x i8] c"true\00"
+@.str.false = private unnamed_addr constant [6 x i8] c"false\00"
 
-@.str.0 = private constant [2 x i8] c"\0A\00"
+@.str.0 = private unnamed_addr constant [2 x i8] c"\0A\00"
 
 @acc = global i32 0
 
@@ -77,43 +77,41 @@ L2:
   %t23 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
   %t24 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
   %t25 = call i32 (i8*, ...) @printf(i8* %t24, i8* %t23)
-  %t26 = alloca i1
-  store i1 0, i1* %t26
-  %t27 = alloca i1
-  store i1 1, i1* %t27
-  %t28 = add i1 0, 1
-  br i1 %t28, label %L6, label %L7
-L7:
-  %t29 = add i1 0, 0
-  store i1 %t29, i1* %t27
-  br label %L6
-L6:
-  %t30 = load i1, i1* %t27
-  br i1 %t30, label %L8, label %L9
-L8:
-  %t31 = add i1 0, 0
-  %t32 = add i1 0, 0
-  %t33 = xor i1 %t31, %t32
-  %t34 = xor i1 %t33, 1
-  store i1 %t34, i1* %t26
-  br label %L9
-L9:
-  %t35 = load i1, i1* %t26
-  br i1 %t35, label %L10, label %L11
+  %t26 = add i1 0, 1
+  br i1 %t26, label %L9, label %L10
 L10:
-  %t36 = getelementptr [5 x i8], [5 x i8]* @.str.true, i32 0, i32 0
-  %t37 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t38 = call i32 (i8*, ...) @printf(i8* %t37, i8* %t36)
-  br label %L12
+  %t27 = add i1 0, 0
+  br label %L11
+L9:
+  br label %L11
 L11:
-  %t39 = getelementptr [6 x i8], [6 x i8]* @.str.false, i32 0, i32 0
-  %t40 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t41 = call i32 (i8*, ...) @printf(i8* %t40, i8* %t39)
-  br label %L12
+  %t28 = phi i1 [ %t27, %L10 ], [ true, %L9 ]
+  br i1 %t28, label %L6, label %L7
+L6:
+  %t29 = add i1 0, 0
+  %t30 = add i1 0, 0
+  %t31 = xor i1 %t29, %t30
+  %t32 = xor i1 %t31, 1
+  br label %L8
+L7:
+  br label %L8
+L8:
+  %t33 = phi i1 [ %t32, %L6 ], [ false, %L7 ]
+  br i1 %t33, label %L12, label %L13
 L12:
-  %t42 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t43 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t44 = call i32 (i8*, ...) @printf(i8* %t43, i8* %t42)
+  %t34 = getelementptr [5 x i8], [5 x i8]* @.str.true, i32 0, i32 0
+  %t35 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t36 = call i32 (i8*, ...) @printf(i8* %t35, i8* %t34)
+  br label %L14
+L13:
+  %t37 = getelementptr [6 x i8], [6 x i8]* @.str.false, i32 0, i32 0
+  %t38 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t39 = call i32 (i8*, ...) @printf(i8* %t38, i8* %t37)
+  br label %L14
+L14:
+  %t40 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t41 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t42 = call i32 (i8*, ...) @printf(i8* %t41, i8* %t40)
   ret i32 0
 }
 

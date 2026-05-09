@@ -109,6 +109,8 @@ static int temp_cnt = 0;
 static int label_cnt = 0;
 static int str_cnt = 0;
 static int block_terminated = 0;
+static int curr_label = -1;
+static int g_is_main = 0;
 
 static ClassTable *g_class_table = NULL;
 static MethodEntry *g_cur_method = NULL;
@@ -120,6 +122,7 @@ static int n_str_consts = 0;
 
 static int new_temp() { return temp_cnt++; }
 static int new_label() { return label_cnt++; }
+static void print_label(int l) { printf("L%d:\n", l); curr_label = l; }
 
 static const char *llvm_type(const char *juc) {
     if (!juc) return "i32";
@@ -134,11 +137,12 @@ static const char *llvm_type(const char *juc) {
 static const char *llvm_default(const char *juc) {
     if (!juc) return "0";
     if (strcmp(juc, "double") == 0) return "0.0";
+    if (strcmp(juc, "boolean") == 0) return "false";
     return "0";
 }
 
 static void process_strlit(const char *val, char *out, int *out_len) {
-    int i = 1; int len = strlen(val); int oi = 0;
+    int i = 1, len = strlen(val), oi = 0;
     while (i < len - 1) {
         if (val[i] == '\\' && i + 1 < len - 1) {
             switch (val[i+1]) {
@@ -188,14 +192,13 @@ static void mangle_method_name(const char *name, MethodEntry *m, char *out, int 
     if (strcmp(name, "main") == 0 && m && m->n_params == 1 && m->param_types[0] == JT_STRING_ARRAY) {
         strncpy(out, "main", outlen-1); out[outlen-1] = '\0'; return;
     }
-    char buf[512]; snprintf(buf, sizeof(buf), "%s", name);
-    if (!m || m->n_params == 0) strcat(buf, "__");
-    else {
+    char buf[512]; snprintf(buf, sizeof(buf), "%s__", name);
+    if (m) {
         for (int i = 0; i < m->n_params; i++) {
+            if (i > 0) strcat(buf, "__");
             const char *t = jtype_to_string(m->param_types[i]);
-            char st[64]; int si = 0;
-            for (int k = 0; t[k] && si < 62; k++) if (t[k] != ' ' && t[k] != '[' && t[k] != ']') st[si++] = t[k];
-            st[si] = '\0'; strcat(buf, "__"); strcat(buf, st);
+            if (strcmp(t, "String[]") == 0) strcat(buf, "StringArray");
+            else strcat(buf, t);
         }
     }
     strncpy(out, buf, outlen-1); out[outlen-1] = '\0';
@@ -205,28 +208,39 @@ static int is_global_by_annotation(const char *name, const char *ann_type) {
     if (!g_class_table) return 0;
     if (g_cur_method) {
         for (Symbol *s = g_cur_method->symbols; s; s = s->next)
-            if (s->name && strcmp(s->name, name) == 0)
-                return 0;
+            if (s->name && strcmp(s->name, name) == 0) return 0;
     }
     for (Symbol *s = g_class_table->fields; s; s = s->next)
-        if (s->name && strcmp(s->name, name) == 0)
-            if (ann_type && strcmp(jtype_to_string(s->type), ann_type) == 0) return 1;
+        if (s->name && strcmp(s->name, name) == 0) {
+             const char *ft = jtype_to_string(s->type);
+             if (ann_type && strcmp(ft, ann_type) == 0) return 1;
+        }
     return 0;
 }
 
-static MethodEntry *resolve_overload(const char *name, const char **arg_annots, int nargs) {
-    MethodEntry *promo = NULL;
-    for (MethodEntry *m = g_class_table->methods; m; m = m->next) {
-        if (strcmp(m->name, name) != 0 || m->n_params != nargs) continue;
-        int exact = 1, match = 1;
-        for (int i = 0; i < nargs; i++) {
-            const char *f = jtype_to_string(m->param_types[i]), *a = arg_annots[i] ? arg_annots[i] : "int";
-            if (strcmp(f, a) != 0) { exact = 0; if (!(strcmp(f, "double") == 0 && strcmp(a, "int") == 0)) { match = 0; break; } }
+static MethodEntry *resolve_overload(const char *name, const char *sig) {
+    if (!sig || sig[0] != '(') return NULL;
+    char s[256]; strncpy(s, sig + 1, 255); s[255] = '\0';
+    char *end = strchr(s, ')'); if (end) *end = '\0';
+    JType types[64]; int n = 0;
+    if (s[0] != '\0') {
+        char *p = strtok(s, ",");
+        while (p && n < 64) {
+            if (strcmp(p, "int") == 0) types[n++] = JT_INT;
+            else if (strcmp(p, "double") == 0) types[n++] = JT_DOUBLE;
+            else if (strcmp(p, "boolean") == 0) types[n++] = JT_BOOLEAN;
+            else if (strcmp(p, "String[]") == 0) types[n++] = JT_STRING_ARRAY;
+            p = strtok(NULL, ",");
         }
-        if (exact) return m;
-        if (match && !promo) promo = m;
     }
-    return promo;
+    for (MethodEntry *m = g_class_table->methods; m; m = m->next) {
+        if (strcmp(m->name, name) == 0 && m->n_params == n) {
+            int same = 1;
+            for (int i = 0; i < n; i++) if (m->param_types[i] != types[i]) { same = 0; break; }
+            if (same) return m;
+        }
+    }
+    return NULL;
 }
 
 static void emit_method(CGNode *md, MethodEntry *m);
@@ -234,7 +248,7 @@ static void emit_statement(CGNode *stmt);
 static int emit_expr(CGNode *expr);
 
 static int maybe_convert(int t, const char *from, const char *to) {
-    if (!from || !to) return t;
+    if (!from || !to || strcmp(from, to) == 0) return t;
     if (strcmp(from, "int") == 0 && strcmp(to, "double") == 0) {
         int r = new_temp(); printf("  %%t%d = sitofp i32 %%t%d to double\n", r, t); return r;
     }
@@ -266,8 +280,7 @@ void codegen(struct node *root, ClassTable *ct) {
     while (decl) {
         if (decl->kind == CG_FieldDecl) {
             CGNode *ft = decl->child, *fid = ft->sibling;
-            const char *jt = cg_type_str(ft);
-            printf("@%s = global %s %s\n", fid->token, llvm_type(jt), llvm_default(jt));
+            while (fid) { printf("@%s = global %s %s\n", fid->token, llvm_type(cg_type_str(ft)), llvm_default(cg_type_str(ft))); fid = fid->sibling; }
         }
         decl = decl->sibling;
     }
@@ -275,11 +288,7 @@ void codegen(struct node *root, ClassTable *ct) {
     MethodEntry *m_ptr = g_class_table->methods;
     decl = cgroot->child ? cgroot->child->sibling : NULL;
     while (decl) {
-        if (decl->kind == CG_MethodDecl) { 
-            emit_method(decl, m_ptr); 
-            if (m_ptr) m_ptr = m_ptr->next;
-            printf("\n"); 
-        }
+        if (decl->kind == CG_MethodDecl) { emit_method(decl, m_ptr); if (m_ptr) m_ptr = m_ptr->next; printf("\n"); }
         decl = decl->sibling;
     }
     free_cgnodes(cgroot);
@@ -287,12 +296,11 @@ void codegen(struct node *root, ClassTable *ct) {
 
 static void emit_method(CGNode *md, MethodEntry *m) {
     CGNode *h = md->child, *body = h->sibling, *rn = h->child, *mid = rn->sibling, *mp = mid->sibling;
-    const char *fn = mid->token;
-    const char *rj = m ? jtype_to_string(m->return_type) : cg_type_str(rn);
+    const char *fn = mid->token, *rj = m ? jtype_to_string(m->return_type) : cg_type_str(rn);
     char mangled[256]; mangle_method_name(fn, m, mangled, sizeof(mangled));
-    int is_main = (strcmp(mangled, "main") == 0);
-    temp_cnt = 0; block_terminated = 0; g_cur_method = m; g_cur_ret_type = rj;
-    if (is_main) printf("define i32 @main(i32 %%argc, i8** %%argv) {\n");
+    g_is_main = (strcmp(mangled, "main") == 0);
+    temp_cnt = 0; label_cnt = 0; block_terminated = 0; curr_label = -1; g_cur_method = m; g_cur_ret_type = rj;
+    if (g_is_main) printf("define i32 @main(i32 %%argc, i8** %%argv) {\n");
     else {
         printf("define %s @%s(", llvm_type(rj), mangled);
         CGNode *p = mp->child; int f = 1;
@@ -311,27 +319,28 @@ static void emit_method(CGNode *md, MethodEntry *m) {
         CGNode *pt = p->child, *pid = pt->sibling;
         if (pt->kind == CG_StringArray) {
             printf("  %%%s.argc = alloca i32\n  %%%s.argv = alloca i8**\n", pid->token, pid->token);
-            if (is_main) printf("  store i32 %%argc, i32* %%%s.argc\n  store i8** %%argv, i8*** %%%s.argv\n", pid->token, pid->token);
+            if (g_is_main) printf("  store i32 %%argc, i32* %%%s.argc\n  store i8** %%argv, i8*** %%%s.argv\n", pid->token, pid->token);
             else printf("  store i32 %%argc.%s, i32* %%%s.argc\n  store i8** %%argv.%s, i8*** %%%s.argv\n", pid->token, pid->token, pid->token, pid->token);
-        } else if (!is_main) {
+        } else {
             const char *lt = llvm_type(cg_type_str(pt));
-            printf("  %%%s = alloca %s\n  store %s %%param.%s, %s* %%%s\n", pid->token, lt, lt, pid->token, lt, pid->token);
+            printf("  %%%s = alloca %s\n", pid->token, lt);
+            if (!g_is_main) printf("  store %s %%param.%s, %s* %%%s\n", lt, pid->token, lt, pid->token);
         }
         p = p->sibling;
     }
+    printf("  %%sc_tmp = alloca i1\n");
     CGNode *s = body->child;
     while (s) {
         if (s->kind == CG_VarDecl) {
             CGNode *vt = s->child, *vid = vt->sibling;
-            const char *vj = cg_type_str(vt);
-            printf("  %%%s = alloca %s\n  store %s %s, %s* %%%s\n", vid->token, llvm_type(vj), llvm_type(vj), llvm_default(vj), llvm_type(vj), vid->token);
+            while (vid) { printf("  %%%s = alloca %s\n  store %s %s, %s* %%%s\n", vid->token, llvm_type(cg_type_str(vt)), llvm_type(cg_type_str(vt)), llvm_default(cg_type_str(vt)), llvm_type(cg_type_str(vt)), vid->token); vid = vid->sibling; }
         }
         s = s->sibling;
     }
     s = body->child;
     while (s) { if (s->kind != CG_VarDecl && !block_terminated) emit_statement(s); s = s->sibling; }
     if (!block_terminated) {
-        if (is_main) printf("  ret i32 0\n");
+        if (g_is_main) printf("  ret i32 0\n");
         else if (strcmp(rj, "void") == 0) printf("  ret void\n");
         else printf("  ret %s %s\n", llvm_type(rj), llvm_default(rj));
     }
@@ -343,27 +352,34 @@ static void emit_statement(CGNode *stmt) {
     switch (stmt->kind) {
         case CG_If: {
             int c = emit_expr(stmt->child); int lt = new_label(), le = new_label(), ln = new_label();
-            printf("  br i1 %%t%d, label %%L%d, label %%L%d\nL%d:\n", c, lt, le, lt);
-            block_terminated = 0; emit_statement(stmt->child->sibling);
-            if (!block_terminated) printf("  br label %%L%d\n", ln);
-            printf("L%d:\n", le); block_terminated = 0;
-            if (stmt->child->sibling->sibling && !(stmt->child->sibling->sibling->kind == CG_Block && !stmt->child->sibling->sibling->child)) emit_statement(stmt->child->sibling->sibling);
-            if (!block_terminated) printf("  br label %%L%d\n", ln);
-            printf("L%d:\n", ln); block_terminated = 0; break;
+            printf("  br i1 %%t%d, label %%L%d, label %%L%d\n", c, lt, le);
+            print_label(lt); block_terminated = 0; emit_statement(stmt->child->sibling);
+            int then_term = block_terminated; if (!block_terminated) printf("  br label %%L%d\n", ln);
+            print_label(le); block_terminated = 0;
+            if (stmt->child->sibling->sibling && !(stmt->child->sibling->sibling->kind == CG_Block && !stmt->child->sibling->sibling->child))
+                emit_statement(stmt->child->sibling->sibling);
+            int else_term = block_terminated; if (!block_terminated) printf("  br label %%L%d\n", ln);
+            if (!then_term || !else_term) { print_label(ln); block_terminated = 0; }
+            else block_terminated = 1;
+            break;
         }
         case CG_While: {
             int lc = new_label(), lb = new_label(), ln = new_label();
-            printf("  br label %%L%d\nL%d:\n", lc, lc);
-            int c = emit_expr(stmt->child); printf("  br i1 %%t%d, label %%L%d, label %%L%d\nL%d:\n", c, lb, ln, lb);
-            block_terminated = 0; emit_statement(stmt->child->sibling);
+            printf("  br label %%L%d\n", lc); print_label(lc);
+            int c = emit_expr(stmt->child); printf("  br i1 %%t%d, label %%L%d, label %%L%d\n", c, lb, ln);
+            print_label(lb); block_terminated = 0; emit_statement(stmt->child->sibling);
             if (!block_terminated) printf("  br label %%L%d\n", lc);
-            printf("L%d:\n", ln); block_terminated = 0; break;
+            print_label(ln); block_terminated = 0; break;
         }
         case CG_Return: {
             if (stmt->child) {
                 int v = emit_expr(stmt->child); v = maybe_convert(v, stmt->child->annotation, g_cur_ret_type);
-                printf("  ret %s %%t%d\n", llvm_type(g_cur_ret_type), v);
-            } else printf("  ret void\n");
+                if (g_is_main) printf("  ret i32 %%t%d\n", v);
+                else printf("  ret %s %%t%d\n", llvm_type(g_cur_ret_type), v);
+            } else {
+                if (g_is_main) printf("  ret i32 0\n");
+                else printf("  ret void\n");
+            }
             block_terminated = 1; break;
         }
         case CG_Print: {
@@ -371,18 +387,17 @@ static void emit_statement(CGNode *stmt) {
             if (arg->kind == CG_StrLit) {
                 const char *sn = find_str_const(arg->token); int sl = find_str_len(arg->token);
                 int p = new_temp(), f = new_temp(), d = new_temp();
-                printf("  %%t%d = getelementptr [%d x i8], [%d x i8]* %s, i32 0, i32 0\n", p, sl, sl, sn);
-                printf("  %%t%d = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0\n", f);
-                printf("  %%t%d = call i32 (i8*, ...) @printf(i8* %%t%d, i8* %%t%d)\n", d, f, p);
+                printf("  %%t%d = getelementptr [%d x i8], [%d x i8]* %s, i32 0, i32 0\n  %%t%d = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0\n  %%t%d = call i32 (i8*, ...) @printf(i8* %%t%d, i8* %%t%d)\n", p, sl, sl, sn, f, d, f, p);
             } else {
                 int v = emit_expr(arg); const char *at = arg->annotation ? arg->annotation : "int";
                 if (strcmp(at, "boolean") == 0) {
                     int ltr = new_label(), lfa = new_label(), ln = new_label();
-                    printf("  br i1 %%t%d, label %%L%d, label %%L%d\nL%d:\n", v, ltr, lfa, ltr);
-                    int pt = new_temp(), f1 = new_temp(), d1 = new_temp();
-                    printf("  %%t%d = getelementptr [5 x i8], [5 x i8]* @.str.true, i32 0, i32 0\n  %%t%d = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0\n  %%t%d = call i32 (i8*, ...) @printf(i8* %%t%d, i8* %%t%d)\n  br label %%L%d\nL%d:\n", pt, f1, d1, f1, pt, ln, lfa);
-                    int pf = new_temp(), f2 = new_temp(), d2 = new_temp();
-                    printf("  %%t%d = getelementptr [6 x i8], [6 x i8]* @.str.false, i32 0, i32 0\n  %%t%d = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0\n  %%t%d = call i32 (i8*, ...) @printf(i8* %%t%d, i8* %%t%d)\n  br label %%L%d\nL%d:\n", pf, f2, d2, f2, pf, ln, ln);
+                    printf("  br i1 %%t%d, label %%L%d, label %%L%d\n", v, ltr, lfa);
+                    print_label(ltr); int pt = new_temp(), f1 = new_temp(), d1 = new_temp();
+                    printf("  %%t%d = getelementptr [5 x i8], [5 x i8]* @.str.true, i32 0, i32 0\n  %%t%d = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0\n  %%t%d = call i32 (i8*, ...) @printf(i8* %%t%d, i8* %%t%d)\n  br label %%L%d\n", pt, f1, d1, f1, pt, ln);
+                    print_label(lfa); int pf = new_temp(), f2 = new_temp(), d2 = new_temp();
+                    printf("  %%t%d = getelementptr [6 x i8], [6 x i8]* @.str.false, i32 0, i32 0\n  %%t%d = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0\n  %%t%d = call i32 (i8*, ...) @printf(i8* %%t%d, i8* %%t%d)\n  br label %%L%d\n", pf, f2, d2, f2, pf, ln);
+                    print_label(ln);
                 } else if (strcmp(at, "double") == 0) {
                     int f = new_temp(), d = new_temp();
                     printf("  %%t%d = getelementptr [6 x i8], [6 x i8]* @.fmt.e, i32 0, i32 0\n  %%t%d = call i32 (i8*, ...) @printf(i8* %%t%d, double %%t%d)\n", f, d, f, v);
@@ -449,18 +464,28 @@ static int emit_expr(CGNode *expr) {
             printf("  %%t%d = xor %s %%t%d, %%t%d\n", r, llvm_type(jt), l, rr); return r;
         }
         case CG_And: {
-            int sc = new_temp(); printf("  %%t%d = alloca i1\n  store i1 0, i1* %%t%d\n", sc, sc);
-            int l = emit_expr(expr->child); int le = new_label(), ln = new_label();
-            printf("  br i1 %%t%d, label %%L%d, label %%L%d\nL%d:\n", l, le, ln, le); block_terminated = 0;
-            int rr = emit_expr(expr->child->sibling); printf("  store i1 %%t%d, i1* %%t%d\n  br label %%L%d\nL%d:\n", rr, sc, ln, ln);
-            block_terminated = 0; r = new_temp(); printf("  %%t%d = load i1, i1* %%t%d\n", r, sc); return r;
+            int lt = new_label(), lf = new_label(), ln = new_label();
+            int l = emit_expr(expr->child);
+            printf("  br i1 %%t%d, label %%L%d, label %%L%d\n", l, lt, lf);
+            print_label(lt); int rr = emit_expr(expr->child->sibling); int lb_rr = curr_label;
+            printf("  br label %%L%d\n", ln);
+            print_label(lf); printf("  br label %%L%d\n", ln);
+            print_label(ln); r = new_temp();
+            if (lb_rr == -1) printf("  %%t%d = phi i1 [ %%t%d, %%entry ], [ false, %%L%d ]\n", r, rr, lf);
+            else printf("  %%t%d = phi i1 [ %%t%d, %%L%d ], [ false, %%L%d ]\n", r, rr, lb_rr, lf);
+            return r;
         }
         case CG_Or: {
-            int sc = new_temp(); printf("  %%t%d = alloca i1\n  store i1 1, i1* %%t%d\n", sc, sc);
-            int l = emit_expr(expr->child); int le = new_label(), ln = new_label();
-            printf("  br i1 %%t%d, label %%L%d, label %%L%d\nL%d:\n", l, ln, le, le); block_terminated = 0;
-            int rr = emit_expr(expr->child->sibling); printf("  store i1 %%t%d, i1* %%t%d\n  br label %%L%d\nL%d:\n", rr, sc, ln, ln);
-            block_terminated = 0; r = new_temp(); printf("  %%t%d = load i1, i1* %%t%d\n", r, sc); return r;
+            int lt = new_label(), lf = new_label(), ln = new_label();
+            int l = emit_expr(expr->child);
+            printf("  br i1 %%t%d, label %%L%d, label %%L%d\n", l, lt, lf);
+            print_label(lf); int rr = emit_expr(expr->child->sibling); int lb_rr = curr_label;
+            printf("  br label %%L%d\n", ln);
+            print_label(lt); printf("  br label %%L%d\n", ln);
+            print_label(ln); r = new_temp();
+            if (lb_rr == -1) printf("  %%t%d = phi i1 [ %%t%d, %%entry ], [ true, %%L%d ]\n", r, rr, lt);
+            else printf("  %%t%d = phi i1 [ %%t%d, %%L%d ], [ true, %%L%d ]\n", r, rr, lb_rr, lt);
+            return r;
         }
         case CG_Eq: case CG_Ne: case CG_Lt: case CG_Gt: case CG_Le: case CG_Ge: {
             int l = emit_expr(expr->child), rr = emit_expr(expr->child->sibling);
@@ -497,8 +522,8 @@ static int emit_expr(CGNode *expr) {
             return v;
         }
         case CG_Call: {
-            CGNode *id = expr->child; const char *ans[64]; int na = 0; for (CGNode *a = id->sibling; a; a = a->sibling) ans[na++] = a->annotation;
-            MethodEntry *m = resolve_overload(id->token, ans, na); char mangled[256]; mangle_method_name(id->token, m, mangled, sizeof(mangled));
+            CGNode *id = expr->child; MethodEntry *m = resolve_overload(id->token, id->annotation);
+            char mangled[256]; mangle_method_name(id->token, m, mangled, sizeof(mangled));
             int ts[128]; const char *ltps[128]; int ncs = 0; CGNode *an = id->sibling; int fi = 0;
             while (an) {
                 if (an->annotation && strcmp(an->annotation, "String[]") == 0) {
@@ -512,15 +537,8 @@ static int emit_expr(CGNode *expr) {
                 an = an->sibling; fi++;
             }
             const char *rj = expr->annotation ? expr->annotation : (m ? jtype_to_string(m->return_type) : "void");
-            if (strcmp(rj, "void") == 0) {
-                printf("  call void @%s(", mangled);
-                for (int i = 0; i < ncs; i++) { if (i) printf(", "); printf("%s %%t%d", ltps[i], ts[i]); }
-                printf(")\n"); return 0;
-            } else {
-                r = new_temp(); printf("  %%t%d = call %s @%s(", r, llvm_type(rj), mangled);
-                for (int i = 0; i < ncs; i++) { if (i) printf(", "); printf("%s %%t%d", ltps[i], ts[i]); }
-                printf(")\n"); return r;
-            }
+            if (strcmp(rj, "void") == 0) { printf("  call void @%s(", mangled); for (int i = 0; i < ncs; i++) { if (i) printf(", "); printf("%s %%t%d", ltps[i], ts[i]); } printf(")\n"); return 0; }
+            else { r = new_temp(); printf("  %%t%d = call %s @%s(", r, llvm_type(rj), mangled); for (int i = 0; i < ncs; i++) { if (i) printf(", "); printf("%s %%t%d", ltps[i], ts[i]); } printf(")\n"); return r; }
         }
         case CG_ParseArgs: {
             int iv = emit_expr(expr->child->sibling); int adj = new_temp(); printf("  %%t%d = add i32 %%t%d, 1\n", adj, iv);

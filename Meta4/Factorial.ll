@@ -12,6 +12,7 @@ define i32 @factorial__int(i32 %param.n) {
 entry:
   %n = alloca i32
   store i32 %param.n, i32* %n
+  %sc_tmp = alloca i1
   %t0 = load i32, i32* %n
   %t1 = add i32 0, 0
   %t2 = icmp eq i32 %t0, %t1
@@ -37,6 +38,7 @@ entry:
   %args.argv = alloca i8**
   store i32 %argc, i32* %args.argc
   store i8** %argv, i8*** %args.argv
+  %sc_tmp = alloca i1
   %argument = alloca i32
   store i32 0, i32* %argument
   %t0 = add i32 0, 7

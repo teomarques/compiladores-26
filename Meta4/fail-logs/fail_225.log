@@ -3,13 +3,13 @@
 < 0
 < 3645
 --- LLVM IR ---
-@.fmt.d = private constant [3 x i8] c"%d\00"
-@.fmt.e = private constant [6 x i8] c"%.16e\00"
-@.fmt.s = private constant [3 x i8] c"%s\00"
-@.str.true = private constant [5 x i8] c"true\00"
-@.str.false = private constant [6 x i8] c"false\00"
+@.fmt.d = private unnamed_addr constant [3 x i8] c"%d\00"
+@.fmt.e = private unnamed_addr constant [6 x i8] c"%.16e\00"
+@.fmt.s = private unnamed_addr constant [3 x i8] c"%s\00"
+@.str.true = private unnamed_addr constant [5 x i8] c"true\00"
+@.str.false = private unnamed_addr constant [6 x i8] c"false\00"
 
-@.str.0 = private constant [2 x i8] c"\0A\00"
+@.str.0 = private unnamed_addr constant [2 x i8] c"\0A\00"
 
 
 declare i32 @printf(i8*, ...)
@@ -52,13 +52,13 @@ entry:
   store i32 0, i32* %k
   %t0 = add i32 0, 0
   store i32 %t0, i32* %k
-  br label %L3
-L3:
+  br label %L0
+L0:
   %t1 = load i32, i32* %k
   %t2 = add i32 0, 5
   %t3 = icmp slt i32 %t1, %t2
-  br i1 %t3, label %L4, label %L5
-L4:
+  br i1 %t3, label %L1, label %L2
+L1:
   %t4 = load i32, i32* %input
   %t5 = add i32 0, 3
   %t6 = mul i32 %t4, %t5
@@ -67,8 +67,8 @@ L4:
   %t8 = add i32 0, 1
   %t9 = add i32 %t7, %t8
   store i32 %t9, i32* %k
-  br label %L3
-L5:
+  br label %L0
+L2:
   %t10 = load i32, i32* %input
   ret i32 %t10
 }
@@ -99,18 +99,18 @@ entry:
   %t8 = load i32, i32* %input
   %t9 = add i32 0, 10
   %t10 = icmp slt i32 %t8, %t9
-  br i1 %t10, label %L6, label %L7
-L6:
+  br i1 %t10, label %L0, label %L1
+L0:
   %t11 = load i32, i32* %input
   %t12 = call i32 @a__int(i32 %t11)
   store i32 %t12, i32* %aux
-  br label %L8
-L7:
+  br label %L2
+L1:
   %t13 = load i32, i32* %input
   %t14 = call i32 @b__int(i32 %t13)
   store i32 %t14, i32* %aux1
-  br label %L8
-L8:
+  br label %L2
+L2:
   %t15 = load i32, i32* %aux
   %t16 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
   %t17 = call i32 (i8*, ...) @printf(i8* %t16, i32 %t15)
@@ -130,17 +130,17 @@ L8:
 PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
 Stack dump:
 0.	Program arguments: lli /tmp/t.ll
- #0 0x000074e90bc1dd1f llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101dd1f)
- #1 0x000074e90bc1ba29 llvm::sys::RunSignalHandlers() (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101ba29)
- #2 0x000074e90bc1e430 (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101e430)
- #3 0x000074e90a4458d0 (/lib/x86_64-linux-gnu/libc.so.6+0x458d0)
- #4 0x000074e90a457a0b __GI_____strtol_l_internal ./stdlib/../stdlib/strtol_l.c:304:10
- #5 0x000074e90a446d64 atoi ./stdlib/atoi.c:28:1
- #6 0x000074e9136e90b7 
- #7 0x000074e90dbab45a llvm::orc::runAsMain(int (*)(int, char**), llvm::ArrayRef<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::optional<llvm::StringRef>) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x2fab45a)
- #8 0x00006520c6002af4 runOrcJIT(char const*) (/usr/lib/llvm-20/bin/lli+0x18af4)
- #9 0x00006520c5ffe2c1 main (/usr/lib/llvm-20/bin/lli+0x142c1)
-#10 0x000074e90a42a578 __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
-#11 0x000074e90a42a63b call_init ./csu/../csu/libc-start.c:128:20
-#12 0x000074e90a42a63b __libc_start_main ./csu/../csu/libc-start.c:347:5
-#13 0x00006520c5ffb935 _start (/usr/lib/llvm-20/bin/lli+0x11935)
+ #0 0x000070907141dd1f llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101dd1f)
+ #1 0x000070907141ba29 llvm::sys::RunSignalHandlers() (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101ba29)
+ #2 0x000070907141e430 (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101e430)
+ #3 0x000070906fc458d0 (/lib/x86_64-linux-gnu/libc.so.6+0x458d0)
+ #4 0x000070906fc57a0b __GI_____strtol_l_internal ./stdlib/../stdlib/strtol_l.c:304:10
+ #5 0x000070906fc46d64 atoi ./stdlib/atoi.c:28:1
+ #6 0x0000709078fab0b7 
+ #7 0x00007090733ab45a llvm::orc::runAsMain(int (*)(int, char**), llvm::ArrayRef<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::optional<llvm::StringRef>) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x2fab45a)
+ #8 0x000061229a6f4af4 runOrcJIT(char const*) (/usr/lib/llvm-20/bin/lli+0x18af4)
+ #9 0x000061229a6f02c1 main (/usr/lib/llvm-20/bin/lli+0x142c1)
+#10 0x000070906fc2a578 __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#11 0x000070906fc2a63b call_init ./csu/../csu/libc-start.c:128:20
+#12 0x000070906fc2a63b __libc_start_main ./csu/../csu/libc-start.c:347:5
+#13 0x000061229a6ed935 _start (/usr/lib/llvm-20/bin/lli+0x11935)

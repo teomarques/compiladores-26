@@ -3,13 +3,13 @@
 > 7
 > 3.5000000000000000e+00
 --- LLVM IR ---
-@.fmt.d = private constant [3 x i8] c"%d\00"
-@.fmt.e = private constant [6 x i8] c"%.16e\00"
-@.fmt.s = private constant [3 x i8] c"%s\00"
-@.str.true = private constant [5 x i8] c"true\00"
-@.str.false = private constant [6 x i8] c"false\00"
+@.fmt.d = private unnamed_addr constant [3 x i8] c"%d\00"
+@.fmt.e = private unnamed_addr constant [6 x i8] c"%.16e\00"
+@.fmt.s = private unnamed_addr constant [3 x i8] c"%s\00"
+@.str.true = private unnamed_addr constant [5 x i8] c"true\00"
+@.str.false = private unnamed_addr constant [6 x i8] c"false\00"
 
-@.str.0 = private constant [2 x i8] c"\0A\00"
+@.str.0 = private unnamed_addr constant [2 x i8] c"\0A\00"
 
 
 declare i32 @printf(i8*, ...)

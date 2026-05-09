@@ -1,9 +1,3 @@
-=== FAILED: ../testes/meta4/complex.java ===
-7c7
-< 5.1627426258154938e+14
----
-> 5.1627430702601506e+14
---- LLVM IR ---
 @.fmt.d = private unnamed_addr constant [3 x i8] c"%d\00"
 @.fmt.e = private unnamed_addr constant [6 x i8] c"%.16e\00"
 @.fmt.s = private unnamed_addr constant [3 x i8] c"%s\00"
@@ -29,6 +23,7 @@ define i1 @overload__boolean(i1 %param.n) {
 entry:
   %n = alloca i1
   store i1 %param.n, i1* %n
+  %sc_tmp = alloca i1
   %t0 = getelementptr [20 x i8], [20 x i8]* @.str.0, i32 0, i32 0
   %t1 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
   %t2 = call i32 (i8*, ...) @printf(i8* %t1, i8* %t0)
@@ -40,6 +35,7 @@ define double @overload__double(double %param.n) {
 entry:
   %n = alloca double
   store double %param.n, double* %n
+  %sc_tmp = alloca i1
   %t0 = getelementptr [19 x i8], [19 x i8]* @.str.1, i32 0, i32 0
   %t1 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
   %t2 = call i32 (i8*, ...) @printf(i8* %t1, i8* %t0)
@@ -89,6 +85,7 @@ entry:
   store double %param.b, double* %b
   %b1 = alloca double
   store double %param.b1, double* %b1
+  %sc_tmp = alloca i1
   %overload = alloca double
   store double 0.0, double* %overload
   %t0 = add i32 0, 2
@@ -108,6 +105,7 @@ entry:
   store i32 %param.b, i32* %b
   %b1 = alloca i32
   store i32 %param.b1, i32* %b1
+  %sc_tmp = alloca i1
   %t0 = add i32 0, 5
   ret i32 %t0
 }
@@ -116,6 +114,7 @@ define i32 @main__int(i32 %param.n) {
 entry:
   %n = alloca i32
   store i32 %param.n, i32* %n
+  %sc_tmp = alloca i1
   %t0 = getelementptr [19 x i8], [19 x i8]* @.str.3, i32 0, i32 0
   %t1 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
   %t2 = call i32 (i8*, ...) @printf(i8* %t1, i8* %t0)
@@ -129,6 +128,7 @@ entry:
   %args.argv = alloca i8**
   store i32 %argc, i32* %args.argc
   store i8** %argv, i8*** %args.argv
+  %sc_tmp = alloca i1
   %a = alloca i32
   store i32 0, i32* %a
   %d = alloca double
@@ -136,7 +136,7 @@ entry:
   %b = alloca i32
   store i32 0, i32* %b
   %b1 = alloca i1
-  store i1 0, i1* %b1
+  store i1 false, i1* %b1
   %d1 = alloca double
   store double 0.0, double* %d1
   %i = alloca i32
@@ -921,4 +921,3 @@ L173:
   ret i32 0
 }
 
---- STDERR ---

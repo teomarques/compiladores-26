@@ -3,13 +3,13 @@
 < 1
 < 2
 --- LLVM IR ---
-@.fmt.d = private constant [3 x i8] c"%d\00"
-@.fmt.e = private constant [6 x i8] c"%.16e\00"
-@.fmt.s = private constant [3 x i8] c"%s\00"
-@.str.true = private constant [5 x i8] c"true\00"
-@.str.false = private constant [6 x i8] c"false\00"
+@.fmt.d = private unnamed_addr constant [3 x i8] c"%d\00"
+@.fmt.e = private unnamed_addr constant [6 x i8] c"%.16e\00"
+@.fmt.s = private unnamed_addr constant [3 x i8] c"%s\00"
+@.str.true = private unnamed_addr constant [5 x i8] c"true\00"
+@.str.false = private unnamed_addr constant [6 x i8] c"false\00"
 
-@.str.0 = private constant [2 x i8] c"\0A\00"
+@.str.0 = private unnamed_addr constant [2 x i8] c"\0A\00"
 
 
 declare i32 @printf(i8*, ...)
@@ -58,17 +58,17 @@ entry:
 PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
 Stack dump:
 0.	Program arguments: lli /tmp/t.ll
- #0 0x0000705cdda1dd1f llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101dd1f)
- #1 0x0000705cdda1ba29 llvm::sys::RunSignalHandlers() (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101ba29)
- #2 0x0000705cdda1e430 (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101e430)
- #3 0x0000705cdc2458d0 (/lib/x86_64-linux-gnu/libc.so.6+0x458d0)
- #4 0x0000705cdc257a0b __GI_____strtol_l_internal ./stdlib/../stdlib/strtol_l.c:304:10
- #5 0x0000705cdc246d64 atoi ./stdlib/atoi.c:28:1
- #6 0x0000705ce542102f 
- #7 0x0000705cdf9ab45a llvm::orc::runAsMain(int (*)(int, char**), llvm::ArrayRef<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::optional<llvm::StringRef>) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x2fab45a)
- #8 0x0000654774646af4 runOrcJIT(char const*) (/usr/lib/llvm-20/bin/lli+0x18af4)
- #9 0x00006547746422c1 main (/usr/lib/llvm-20/bin/lli+0x142c1)
-#10 0x0000705cdc22a578 __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
-#11 0x0000705cdc22a63b call_init ./csu/../csu/libc-start.c:128:20
-#12 0x0000705cdc22a63b __libc_start_main ./csu/../csu/libc-start.c:347:5
-#13 0x000065477463f935 _start (/usr/lib/llvm-20/bin/lli+0x11935)
+ #0 0x00007f8167c1dd1f llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101dd1f)
+ #1 0x00007f8167c1ba29 llvm::sys::RunSignalHandlers() (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101ba29)
+ #2 0x00007f8167c1e430 (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101e430)
+ #3 0x00007f81664458d0 (/lib/x86_64-linux-gnu/libc.so.6+0x458d0)
+ #4 0x00007f8166457a0b __GI_____strtol_l_internal ./stdlib/../stdlib/strtol_l.c:304:10
+ #5 0x00007f8166446d64 atoi ./stdlib/atoi.c:28:1
+ #6 0x00007f816f78a02f 
+ #7 0x00007f8169bab45a llvm::orc::runAsMain(int (*)(int, char**), llvm::ArrayRef<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::optional<llvm::StringRef>) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x2fab45a)
+ #8 0x000062b016e2baf4 runOrcJIT(char const*) (/usr/lib/llvm-20/bin/lli+0x18af4)
+ #9 0x000062b016e272c1 main (/usr/lib/llvm-20/bin/lli+0x142c1)
+#10 0x00007f816642a578 __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#11 0x00007f816642a63b call_init ./csu/../csu/libc-start.c:128:20
+#12 0x00007f816642a63b __libc_start_main ./csu/../csu/libc-start.c:347:5
+#13 0x000062b016e24935 _start (/usr/lib/llvm-20/bin/lli+0x11935)

@@ -11,18 +11,18 @@
 > Number of arguments:	0
 > No arguments :(
 --- LLVM IR ---
-@.fmt.d = private constant [3 x i8] c"%d\00"
-@.fmt.e = private constant [6 x i8] c"%.16e\00"
-@.fmt.s = private constant [3 x i8] c"%s\00"
-@.str.true = private constant [5 x i8] c"true\00"
-@.str.false = private constant [6 x i8] c"false\00"
+@.fmt.d = private unnamed_addr constant [3 x i8] c"%d\00"
+@.fmt.e = private unnamed_addr constant [6 x i8] c"%.16e\00"
+@.fmt.s = private unnamed_addr constant [3 x i8] c"%s\00"
+@.str.true = private unnamed_addr constant [5 x i8] c"true\00"
+@.str.false = private unnamed_addr constant [6 x i8] c"false\00"
 
-@.str.0 = private constant [7 x i8] c"\0D\5C\22\0C\09\0A\00"
-@.str.1 = private constant [22 x i8] c"Number of arguments:\09\00"
-@.str.2 = private constant [2 x i8] c"\0A\00"
-@.str.3 = private constant [6 x i8] c"Arg (\00"
-@.str.4 = private constant [4 x i8] c"): \00"
-@.str.5 = private constant [16 x i8] c"No arguments :(\00"
+@.str.0 = private unnamed_addr constant [7 x i8] c"\0D\5C\22\0C\09\0A\00"
+@.str.1 = private unnamed_addr constant [22 x i8] c"Number of arguments:\09\00"
+@.str.2 = private unnamed_addr constant [2 x i8] c"\0A\00"
+@.str.3 = private unnamed_addr constant [6 x i8] c"Arg (\00"
+@.str.4 = private unnamed_addr constant [4 x i8] c"): \00"
+@.str.5 = private unnamed_addr constant [16 x i8] c"No arguments :(\00"
 
 @i = global i32 0
 

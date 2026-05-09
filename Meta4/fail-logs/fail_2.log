@@ -1,184 +1,21 @@
 === FAILED: ../testes/meta4/C_e_D.java ===
-4,5c4
+1,12d0
+< 2
+< 3
+< 3.0000000000000000e+00
 < Teste	de string\"
 < %%
----
-> Teste	de string\"%%
+< true
+< 4
+< false
+< 5
+< 1.2299999999999999e-08
+< 0.0000000000000000e+00
+< 1.0000000000000000e+01
 --- LLVM IR ---
-@.fmt.d = private constant [3 x i8] c"%d\00"
-@.fmt.e = private constant [6 x i8] c"%.16e\00"
-@.fmt.s = private constant [3 x i8] c"%s\00"
-@.str.true = private constant [5 x i8] c"true\00"
-@.str.false = private constant [6 x i8] c"false\00"
-
-@.str.0 = private constant [2 x i8] c"\0A\00"
-@.str.1 = private constant [22 x i8] c"Teste\09de \0Cstring\5C\22\0D%%\00"
-
-@a = global i32 0
-@b = global i32 0
-@c = global i32 0
-@d = global i32 0
-
-declare i32 @printf(i8*, ...)
-declare i32 @atoi(i8*)
-
-define i32 @main(i32 %argc, i8** %argv) {
-entry:
-  %args.argc = alloca i32
-  %args.argv = alloca i8**
-  store i32 %argc, i32* %args.argc
-  store i8** %argv, i8*** %args.argv
-  %i = alloca i32
-  store i32 0, i32* %i
-  %a = alloca i32
-  store i32 0, i32* %a
-  %i1 = alloca i32
-  store i32 0, i32* %i1
-  %i2 = alloca i32
-  store i32 0, i32* %i2
-  %i3 = alloca i32
-  store i32 0, i32* %i3
-  %d = alloca double
-  store double 0.0, double* %d
-  %t0 = add i32 0, 2
-  store i32 %t0, i32* %a
-  %t1 = load i32, i32* %a
-  %t2 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
-  %t3 = call i32 (i8*, ...) @printf(i8* %t2, i32 %t1)
-  %t4 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t5 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t6 = call i32 (i8*, ...) @printf(i8* %t5, i8* %t4)
-  %t7 = add i32 0, 0
-  %t8 = add i32 0, 3
-  %t9 = add i32 %t7, %t8
-  store i32 %t9, i32* %a
-  %t10 = sitofp i32 %t9 to double
-  store double %t10, double* %d
-  %t11 = load i32, i32* %a
-  %t12 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
-  %t13 = call i32 (i8*, ...) @printf(i8* %t12, i32 %t11)
-  %t14 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t15 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t16 = call i32 (i8*, ...) @printf(i8* %t15, i8* %t14)
-  %t17 = load double, double* %d
-  %t18 = getelementptr [6 x i8], [6 x i8]* @.fmt.e, i32 0, i32 0
-  %t19 = call i32 (i8*, ...) @printf(i8* %t18, double %t17)
-  %t20 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t21 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t22 = call i32 (i8*, ...) @printf(i8* %t21, i8* %t20)
-  %t23 = getelementptr [22 x i8], [22 x i8]* @.str.1, i32 0, i32 0
-  %t24 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t25 = call i32 (i8*, ...) @printf(i8* %t24, i8* %t23)
-  %t26 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t27 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t28 = call i32 (i8*, ...) @printf(i8* %t27, i8* %t26)
-  %t29 = alloca i1
-  store i1 1, i1* %t29
-  %t30 = load i32, i32* %a
-  %t31 = add i32 0, 1
-  %t32 = add i32 %t30, %t31
-  store i32 %t32, i32* %a
-  %t33 = add i32 0, 0
-  %t34 = icmp sgt i32 %t32, %t33
-  br i1 %t34, label %L0, label %L1
-L1:
-  %t35 = load i32, i32* %a
-  %t36 = add i32 0, 3
-  %t37 = add i32 %t35, %t36
-  store i32 %t37, i32* %a
-  %t38 = add i32 0, 0
-  %t39 = icmp sgt i32 %t37, %t38
-  store i1 %t39, i1* %t29
-  br label %L0
-L0:
-  %t40 = load i1, i1* %t29
-  br i1 %t40, label %L2, label %L3
-L2:
-  %t41 = getelementptr [5 x i8], [5 x i8]* @.str.true, i32 0, i32 0
-  %t42 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t43 = call i32 (i8*, ...) @printf(i8* %t42, i8* %t41)
-  br label %L4
-L3:
-  %t44 = getelementptr [6 x i8], [6 x i8]* @.str.false, i32 0, i32 0
-  %t45 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t46 = call i32 (i8*, ...) @printf(i8* %t45, i8* %t44)
-  br label %L4
-L4:
-  %t47 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t48 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t49 = call i32 (i8*, ...) @printf(i8* %t48, i8* %t47)
-  %t50 = load i32, i32* %a
-  %t51 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
-  %t52 = call i32 (i8*, ...) @printf(i8* %t51, i32 %t50)
-  %t53 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t54 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t55 = call i32 (i8*, ...) @printf(i8* %t54, i8* %t53)
-  %t56 = alloca i1
-  store i1 0, i1* %t56
-  %t57 = load i32, i32* %a
-  %t58 = add i32 0, 1
-  %t59 = add i32 %t57, %t58
-  store i32 %t59, i32* %a
-  %t60 = add i32 0, 0
-  %t61 = icmp slt i32 %t59, %t60
-  br i1 %t61, label %L5, label %L6
-L5:
-  %t62 = load i32, i32* %a
-  %t63 = add i32 0, 3
-  %t64 = add i32 %t62, %t63
-  store i32 %t64, i32* %a
-  %t65 = add i32 0, 0
-  %t66 = icmp slt i32 %t64, %t65
-  store i1 %t66, i1* %t56
-  br label %L6
-L6:
-  %t67 = load i1, i1* %t56
-  br i1 %t67, label %L7, label %L8
-L7:
-  %t68 = getelementptr [5 x i8], [5 x i8]* @.str.true, i32 0, i32 0
-  %t69 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t70 = call i32 (i8*, ...) @printf(i8* %t69, i8* %t68)
-  br label %L9
-L8:
-  %t71 = getelementptr [6 x i8], [6 x i8]* @.str.false, i32 0, i32 0
-  %t72 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t73 = call i32 (i8*, ...) @printf(i8* %t72, i8* %t71)
-  br label %L9
-L9:
-  %t74 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t75 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t76 = call i32 (i8*, ...) @printf(i8* %t75, i8* %t74)
-  %t77 = load i32, i32* %a
-  %t78 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
-  %t79 = call i32 (i8*, ...) @printf(i8* %t78, i32 %t77)
-  %t80 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t81 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t82 = call i32 (i8*, ...) @printf(i8* %t81, i8* %t80)
-  %t83 = fadd double 0.0, 1.22999999999999993e-08
-  store double %t83, double* %d
-  %t84 = load double, double* %d
-  %t85 = getelementptr [6 x i8], [6 x i8]* @.fmt.e, i32 0, i32 0
-  %t86 = call i32 (i8*, ...) @printf(i8* %t85, double %t84)
-  %t87 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t88 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t89 = call i32 (i8*, ...) @printf(i8* %t88, i8* %t87)
-  %t90 = fadd double 0.0, 0.00000000000000000e+00
-  store double %t90, double* %d
-  %t91 = load double, double* %d
-  %t92 = getelementptr [6 x i8], [6 x i8]* @.fmt.e, i32 0, i32 0
-  %t93 = call i32 (i8*, ...) @printf(i8* %t92, double %t91)
-  %t94 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t95 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t96 = call i32 (i8*, ...) @printf(i8* %t95, i8* %t94)
-  %t97 = fadd double 0.0, 1.00000000000000000e+01
-  store double %t97, double* %d
-  %t98 = load double, double* %d
-  %t99 = getelementptr [6 x i8], [6 x i8]* @.fmt.e, i32 0, i32 0
-  %t100 = call i32 (i8*, ...) @printf(i8* %t99, double %t98)
-  %t101 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
-  %t102 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
-  %t103 = call i32 (i8*, ...) @printf(i8* %t102, i8* %t101)
-  ret i32 0
-}
-
+Line 27, col 7: Number .0e-10 out of bounds
 --- STDERR ---
+lli: lli: /tmp/t.ll:1:1: error: expected top-level entity
+Line 27, col 7: Number .0e-10 out of bounds
+^
+
