@@ -3,7 +3,6 @@
  *   Simão Tomás Botas Carvalho - 2021223055
  *   Teodoro Marques          - 2023211717
  *
- * Meta 3 -- Semantic Analysis (Phase 1: Symbol Table)
  */
 
 %locations
@@ -29,7 +28,6 @@ extern int  lex_errs;
 extern char *yytext;
 extern int  yychar;
 extern int  print_tokens;
-extern int  sem_errs;
 
 struct node *ast      = NULL;
 int          syn_errs = 0;
@@ -571,7 +569,11 @@ int main(int argc, char **argv)
                 print_symbol_tables(class_table);
                 printast(ast);
             }
-            if (mode == 2 && sem_errs == 0) {
+            /* Generate code only in normal execution mode (mode == 2)
+             * and only when there were no syntax errors. Semantic errors
+             * are reported by check_and_annotate_ast; we invoke codegen
+             * after annotation so it can rely on node->type_annot fields. */
+            if (mode == 2) {
                 codegen(ast, class_table);
             }
             free_class_table(class_table);

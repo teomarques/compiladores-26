@@ -12,13 +12,8 @@
 #include <math.h>
 #include <limits.h>
 
-/* Header gerado por yacc/bison a partir do jucompiler.y.
- * (o teu Makefile deve gerar y.tab.h) */
 #include "y.tab.h"
 
-/* Executado antes de cada ação do lexer:
- * guarda a posição inicial do token em syn_* e avança a coluna.
- * Também atualiza yylloc para rastrear localizações Yacc. */
 #define YY_USER_ACTION { \
     yylloc.first_line = lex_line; \
     yylloc.first_column = lex_column; \

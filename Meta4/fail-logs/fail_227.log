@@ -1,0 +1,187 @@
+=== FAILED: ../testes/meta4/fluxControl3.java ===
+1,2d0
+< Is pair: 2500|
+< 30
+--- LLVM IR ---
+@.fmt.d = private unnamed_addr constant [3 x i8] c"%d\00"
+@.fmt.e = private unnamed_addr constant [6 x i8] c"%.16e\00"
+@.fmt.s = private unnamed_addr constant [3 x i8] c"%s\00"
+@.str.true = private unnamed_addr constant [5 x i8] c"true\00"
+@.str.false = private unnamed_addr constant [6 x i8] c"false\00"
+
+@.str.0 = private unnamed_addr constant [10 x i8] c"Is pair: \00"
+@.str.1 = private unnamed_addr constant [3 x i8] c"|\0A\00"
+@.str.2 = private unnamed_addr constant [2 x i8] c"\0A\00"
+
+
+declare i32 @printf(i8*, ...)
+declare i32 @atoi(i8*)
+
+define i32 @b__int(i32 %param.input) {
+entry:
+  %input = alloca i32
+  store i32 %param.input, i32* %input
+  %k = alloca i32
+  store i32 0, i32* %k
+  %i = alloca i32
+  store i32 0, i32* %i
+  %g = alloca i32
+  store i32 0, i32* %g
+  %is_pair = alloca i32
+  store i32 0, i32* %is_pair
+  %t0 = add i32 0, 0
+  store i32 %t0, i32* %k
+  %t1 = add i32 0, 0
+  store i32 %t1, i32* %i
+  %t2 = add i32 0, 0
+  store i32 %t2, i32* %g
+  %t3 = add i32 0, 0
+  store i32 %t3, i32* %is_pair
+  br label %L0
+L0:
+  %t4 = load i32, i32* %k
+  %t5 = add i32 0, 5
+  %t6 = icmp slt i32 %t4, %t5
+  br i1 %t6, label %L1, label %L2
+L1:
+  %t7 = load i32, i32* %k
+  %t8 = add i32 0, 1
+  %t9 = icmp eq i32 %t7, %t8
+  br i1 %t9, label %L3, label %L4
+L3:
+  %t10 = load i32, i32* %input
+  %t11 = add i32 0, 2
+  %t12 = sub i32 %t10, %t11
+  store i32 %t12, i32* %input
+  %t13 = add i32 0, 0
+  store i32 %t13, i32* %i
+  %t14 = add i32 0, 0
+  store i32 %t14, i32* %g
+  br label %L6
+L6:
+  %t15 = load i32, i32* %i
+  %t16 = add i32 0, 100
+  %t17 = icmp slt i32 %t15, %t16
+  br i1 %t17, label %L7, label %L8
+L7:
+  br label %L9
+L9:
+  %t18 = load i32, i32* %g
+  %t19 = add i32 0, 50
+  %t20 = icmp slt i32 %t18, %t19
+  br i1 %t20, label %L10, label %L11
+L10:
+  %t21 = load i32, i32* %input
+  %t22 = add i32 0, 2
+  %t23 = add i32 %t21, %t22
+  store i32 %t23, i32* %input
+  %t24 = load i32, i32* %g
+  %t25 = add i32 0, 2
+  %t26 = srem i32 %t24, %t25
+  %t27 = add i32 0, 0
+  %t28 = icmp eq i32 %t26, %t27
+  br i1 %t28, label %L12, label %L13
+L12:
+  %t29 = load i32, i32* %is_pair
+  %t30 = add i32 0, 1
+  %t31 = add i32 %t29, %t30
+  store i32 %t31, i32* %is_pair
+  br label %L14
+L13:
+  br label %L14
+L14:
+  %t32 = load i32, i32* %g
+  %t33 = add i32 0, 1
+  %t34 = add i32 %t32, %t33
+  store i32 %t34, i32* %g
+  br label %L9
+L11:
+  %t35 = add i32 0, 0
+  store i32 %t35, i32* %g
+  %t36 = load i32, i32* %i
+  %t37 = add i32 0, 1
+  %t38 = add i32 %t36, %t37
+  store i32 %t38, i32* %i
+  br label %L6
+L8:
+  br label %L5
+L4:
+  %t39 = load i32, i32* %k
+  %t40 = add i32 0, 2
+  %t41 = icmp eq i32 %t39, %t40
+  br i1 %t41, label %L15, label %L16
+L15:
+  %t42 = load i32, i32* %input
+  %t43 = add i32 0, 3
+  %t44 = mul i32 %t42, %t43
+  store i32 %t44, i32* %input
+  br label %L17
+L16:
+  br label %L17
+L17:
+  br label %L5
+L5:
+  %t45 = load i32, i32* %k
+  %t46 = add i32 0, 1
+  %t47 = add i32 %t45, %t46
+  store i32 %t47, i32* %k
+  br label %L0
+L2:
+  %t48 = getelementptr [10 x i8], [10 x i8]* @.str.0, i32 0, i32 0
+  %t49 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t50 = call i32 (i8*, ...) @printf(i8* %t49, i8* %t48)
+  %t51 = load i32, i32* %is_pair
+  %t52 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
+  %t53 = call i32 (i8*, ...) @printf(i8* %t52, i32 %t51)
+  %t54 = getelementptr [3 x i8], [3 x i8]* @.str.1, i32 0, i32 0
+  %t55 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t56 = call i32 (i8*, ...) @printf(i8* %t55, i8* %t54)
+  %t57 = load i32, i32* %input
+  ret i32 %t57
+}
+
+define i32 @main(i32 %argc, i8** %argv) {
+entry:
+  %args.argc = alloca i32
+  %args.argv = alloca i8**
+  store i32 %argc, i32* %args.argc
+  store i8** %argv, i8*** %args.argv
+  %aux1 = alloca i32
+  store i32 0, i32* %aux1
+  %t0 = add i32 0, 40
+  store i32 %t0, i32* %aux1
+  %t1 = load i32, i32* %aux1
+  %t2 = call i32 @b__int(i32 %t1)
+  store i32 %t2, i32* %aux1
+  %t3 = add i32 0, 0
+  %t4 = add i32 %t3, 1
+  %t5 = load i8**, i8*** %args.argv
+  %t6 = getelementptr i8*, i8** %t5, i32 %t4
+  %t7 = load i8*, i8** %t6
+  %t8 = call i32 @atoi(i8* %t7)
+  %t9 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
+  %t10 = call i32 (i8*, ...) @printf(i8* %t9, i32 %t8)
+  %t11 = getelementptr [2 x i8], [2 x i8]* @.str.2, i32 0, i32 0
+  %t12 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t13 = call i32 (i8*, ...) @printf(i8* %t12, i8* %t11)
+  ret i32 0
+}
+
+--- STDERR ---
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
+Stack dump:
+0.	Program arguments: lli /tmp/t.ll
+ #0 0x00007a9ddbc1dd1f llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101dd1f)
+ #1 0x00007a9ddbc1ba29 llvm::sys::RunSignalHandlers() (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101ba29)
+ #2 0x00007a9ddbc1e430 (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x101e430)
+ #3 0x00007a9dda4458d0 (/lib/x86_64-linux-gnu/libc.so.6+0x458d0)
+ #4 0x00007a9dda457a0b __GI_____strtol_l_internal ./stdlib/../stdlib/strtol_l.c:304:10
+ #5 0x00007a9dda446d64 atoi ./stdlib/atoi.c:28:1
+ #6 0x00007a9de3731145 
+ #7 0x00007a9dddbab45a llvm::orc::runAsMain(int (*)(int, char**), llvm::ArrayRef<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>, std::optional<llvm::StringRef>) (/usr/lib/llvm-20/bin/../lib/libLLVM.so.20.1+0x2fab45a)
+ #8 0x0000598daf2b5af4 runOrcJIT(char const*) (/usr/lib/llvm-20/bin/lli+0x18af4)
+ #9 0x0000598daf2b12c1 main (/usr/lib/llvm-20/bin/lli+0x142c1)
+#10 0x00007a9dda42a578 __libc_start_call_main ./csu/../sysdeps/nptl/libc_start_call_main.h:74:3
+#11 0x00007a9dda42a63b call_init ./csu/../csu/libc-start.c:128:20
+#12 0x00007a9dda42a63b __libc_start_main ./csu/../csu/libc-start.c:347:5
+#13 0x0000598daf2ae935 _start (/usr/lib/llvm-20/bin/lli+0x11935)

@@ -1,0 +1,56 @@
+=== FAILED: ../testes/meta4/m4_essential_fields.java ===
+0a1,3
+> 7
+> 10
+> 2.5000000000000000e+00
+--- LLVM IR ---
+@.fmt.d = private unnamed_addr constant [3 x i8] c"%d\00"
+@.fmt.e = private unnamed_addr constant [6 x i8] c"%.16e\00"
+@.fmt.s = private unnamed_addr constant [3 x i8] c"%s\00"
+@.str.true = private unnamed_addr constant [5 x i8] c"true\00"
+@.str.false = private unnamed_addr constant [6 x i8] c"false\00"
+
+@.str.0 = private unnamed_addr constant [2 x i8] c"\0A\00"
+
+@counter = global i32 0
+@ratio = global double 0.0
+
+declare i32 @printf(i8*, ...)
+declare i32 @atoi(i8*)
+
+define i32 @main(i32 %argc, i8** %argv) {
+entry:
+  %args.argc = alloca i32
+  %args.argv = alloca i8**
+  store i32 %argc, i32* %args.argc
+  store i8** %argv, i8*** %args.argv
+  %t0 = add i32 0, 7
+  store i32 %t0, i32* @counter
+  %t1 = load i32, i32* @counter
+  %t2 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
+  %t3 = call i32 (i8*, ...) @printf(i8* %t2, i32 %t1)
+  %t4 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t5 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t6 = call i32 (i8*, ...) @printf(i8* %t5, i8* %t4)
+  %t7 = load i32, i32* @counter
+  %t8 = add i32 0, 3
+  %t9 = add i32 %t7, %t8
+  store i32 %t9, i32* @counter
+  %t10 = load i32, i32* @counter
+  %t11 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
+  %t12 = call i32 (i8*, ...) @printf(i8* %t11, i32 %t10)
+  %t13 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t14 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t15 = call i32 (i8*, ...) @printf(i8* %t14, i8* %t13)
+  %t16 = fadd double 0.0, 2.50000000000000000e+00
+  store double %t16, double* @ratio
+  %t17 = load double, double* @ratio
+  %t18 = getelementptr [6 x i8], [6 x i8]* @.fmt.e, i32 0, i32 0
+  %t19 = call i32 (i8*, ...) @printf(i8* %t18, double %t17)
+  %t20 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t21 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t22 = call i32 (i8*, ...) @printf(i8* %t21, i8* %t20)
+  ret i32 0
+}
+
+--- STDERR ---

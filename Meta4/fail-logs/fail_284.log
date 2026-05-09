@@ -1,0 +1,63 @@
+=== FAILED: ../testes/meta4/m4_essential_unary.java ===
+0a1,4
+> 5
+> -5
+> 3.5000000000000000e+00
+> -3.5000000000000000e+00
+--- LLVM IR ---
+@.fmt.d = private unnamed_addr constant [3 x i8] c"%d\00"
+@.fmt.e = private unnamed_addr constant [6 x i8] c"%.16e\00"
+@.fmt.s = private unnamed_addr constant [3 x i8] c"%s\00"
+@.str.true = private unnamed_addr constant [5 x i8] c"true\00"
+@.str.false = private unnamed_addr constant [6 x i8] c"false\00"
+
+@.str.0 = private unnamed_addr constant [2 x i8] c"\0A\00"
+
+
+declare i32 @printf(i8*, ...)
+declare i32 @atoi(i8*)
+
+define i32 @main(i32 %argc, i8** %argv) {
+entry:
+  %args.argc = alloca i32
+  %args.argv = alloca i8**
+  store i32 %argc, i32* %args.argc
+  store i8** %argv, i8*** %args.argv
+  %i = alloca i32
+  store i32 0, i32* %i
+  %d = alloca double
+  store double 0.0, double* %d
+  %t0 = add i32 0, 5
+  store i32 %t0, i32* %i
+  %t1 = load i32, i32* %i
+  %t2 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
+  %t3 = call i32 (i8*, ...) @printf(i8* %t2, i32 %t1)
+  %t4 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t5 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t6 = call i32 (i8*, ...) @printf(i8* %t5, i8* %t4)
+  %t7 = load i32, i32* %i
+  %t8 = sub i32 0, %t7
+  %t9 = getelementptr [3 x i8], [3 x i8]* @.fmt.d, i32 0, i32 0
+  %t10 = call i32 (i8*, ...) @printf(i8* %t9, i32 %t8)
+  %t11 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t12 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t13 = call i32 (i8*, ...) @printf(i8* %t12, i8* %t11)
+  %t14 = fadd double 0.0, 3.50000000000000000e+00
+  store double %t14, double* %d
+  %t15 = load double, double* %d
+  %t16 = getelementptr [6 x i8], [6 x i8]* @.fmt.e, i32 0, i32 0
+  %t17 = call i32 (i8*, ...) @printf(i8* %t16, double %t15)
+  %t18 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t19 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t20 = call i32 (i8*, ...) @printf(i8* %t19, i8* %t18)
+  %t21 = load double, double* %d
+  %t22 = fsub double -0.0, %t21
+  %t23 = getelementptr [6 x i8], [6 x i8]* @.fmt.e, i32 0, i32 0
+  %t24 = call i32 (i8*, ...) @printf(i8* %t23, double %t22)
+  %t25 = getelementptr [2 x i8], [2 x i8]* @.str.0, i32 0, i32 0
+  %t26 = getelementptr [3 x i8], [3 x i8]* @.fmt.s, i32 0, i32 0
+  %t27 = call i32 (i8*, ...) @printf(i8* %t26, i8* %t25)
+  ret i32 0
+}
+
+--- STDERR ---

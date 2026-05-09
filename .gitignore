@@ -13,3 +13,7 @@ jucompiler
 .claude/worktrees/
 .vscode/
 *.txt
+
+# Dotfiles (exceto .gitignore)
+.*
+!.gitignore

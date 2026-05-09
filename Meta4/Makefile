@@ -1,25 +1,18 @@
 CC = cc
-CFLAGS = -Wall -Wno-unused-function -Isrc
+CFLAGS = -Wall -Wno-unused-function -g
 
 all: jucompiler
 
-lex.yy.c: src/jucompiler.l
-	cd src && lex jucompiler.l && mv lex.yy.c .. && cd ..
+lex.yy.c: jucompiler.l y.tab.h
+	lex jucompiler.l
 
-y.tab.c y.tab.h: src/jucompiler.y
-	cd src && yacc -d jucompiler.y && mv y.tab.c y.tab.h .. && cd ..
+y.tab.c y.tab.h: jucompiler.y
+	yacc -d jucompiler.y
 
-# Source files - note semantics.c (with 's')
-SOURCES = lex.yy.c y.tab.c \
-          src/ast.c \
-          src/semantics.c \
-          src/symtab.c \
-          src/codegen.c
-
-jucompiler: $(SOURCES)
-	$(CC) $(CFLAGS) -o $@ $^ -lfl
+jucompiler: y.tab.c lex.yy.c ast.c semantic.c codegen.c
+	$(CC) $(CFLAGS) -o jucompiler y.tab.c lex.yy.c ast.c semantic.c codegen.c -lfl
 
 clean:
-	rm -f jucompiler lex.yy.c y.tab.c y.tab.h y.output y.gv *.o
+	rm -f jucompiler lex.yy.c y.tab.c y.tab.h y.output *.o
 
-.PHONY: all test clean
+.PHONY: all clean
