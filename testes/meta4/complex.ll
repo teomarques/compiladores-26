@@ -715,59 +715,67 @@ L140:
 L153:
   br i1 %284, label %L151, label %L152
 L151:
+  %285 = load i1, i1* %35
+  %286 = xor i1 %285, 1
+  %287 = add i1 0, 0
+  %288 = xor i1 %286, %287
   br label %L154
 L154:
   br label %L152
 L152:
-  %285 = phi i1 [ %284, %L153 ], [ %-1, %L154 ]
+  %289 = phi i1 [ %284, %L153 ], [ %288, %L154 ]
   br label %L155
 L155:
   br label %L141
 L141:
-  %286 = phi i1 [ %283, %L150 ], [ %285, %L155 ]
-  br i1 %286, label %L156, label %L157
+  %290 = phi i1 [ %283, %L150 ], [ %289, %L155 ]
+  br i1 %290, label %L156, label %L157
 L156:
-  %287 = add i1 1, 0
+  %291 = add i1 1, 0
   br label %L165
 L165:
-  br i1 %287, label %L163, label %L164
+  br i1 %291, label %L163, label %L164
 L163:
-  %288 = load i1, i1* %35
+  %292 = load i1, i1* %35
   br label %L166
 L166:
   br label %L164
 L164:
-  %289 = phi i1 [ %287, %L165 ], [ %288, %L166 ]
+  %293 = phi i1 [ %291, %L165 ], [ %292, %L166 ]
   br label %L167
 L167:
-  br i1 %289, label %L162, label %L161
+  br i1 %293, label %L162, label %L161
 L161:
-  %290 = add i1 1, 0
+  %294 = add i1 1, 0
   br label %L168
 L168:
   br label %L162
 L162:
-  %291 = phi i1 [ %289, %L167 ], [ %290, %L168 ]
+  %295 = phi i1 [ %293, %L167 ], [ %294, %L168 ]
   br label %L169
 L169:
-  br i1 %291, label %L160, label %L159
+  br i1 %295, label %L160, label %L159
 L159:
-  %292 = load i1, i1* %35
+  %296 = load i1, i1* %35
   br label %L172
 L172:
-  br i1 %292, label %L170, label %L171
+  br i1 %296, label %L170, label %L171
 L170:
+  %297 = add i1 0, 0
+  %298 = load i1, i1* %35
+  %299 = xor i1 %298, 1
+  %300 = xor i1 %297, %299
   br label %L173
 L173:
   br label %L171
 L171:
-  %293 = phi i1 [ %292, %L172 ], [ %-1, %L173 ]
+  %301 = phi i1 [ %296, %L172 ], [ %300, %L173 ]
   br label %L174
 L174:
   br label %L160
 L160:
-  %294 = phi i1 [ %291, %L169 ], [ %293, %L174 ]
-  br i1 %294, label %L175, label %L176
+  %302 = phi i1 [ %295, %L169 ], [ %301, %L174 ]
+  br i1 %302, label %L175, label %L176
 L175:
   br label %L177
 L176:
@@ -777,117 +785,121 @@ L177:
 L157:
   br label %L158
 L158:
-  %295 = getelementptr [11 x i8], [11 x i8]* @.str.7, i32 0, i32 0
-  %296 = getelementptr [3 x i8], [3 x i8]* @.str.fmt.str, i32 0, i32 0
-  %297 = call i32 (i8*, ...) @printf(i8* %296, i8* %295)
-  %298 = load i32, i32* %26
-  %299 = load double, double* %28
-  %300 = fsub double 0.0, %299
-  %301 = sitofp i32 %298 to double
-  %302 = fmul double %301, %300
-  %303 = getelementptr [6 x i8], [6 x i8]* @.str.fmt.double, i32 0, i32 0
-  %304 = call i32 (i8*, ...) @printf(i8* %303, double %302)
-  %305 = getelementptr [2 x i8], [2 x i8]* @.str.4, i32 0, i32 0
-  %306 = getelementptr [3 x i8], [3 x i8]* @.str.fmt.str, i32 0, i32 0
-  %307 = call i32 (i8*, ...) @printf(i8* %306, i8* %305)
-  %308 = getelementptr [5 x i8], [5 x i8]* @.str.true, i32 0, i32 0
-  %309 = getelementptr [6 x i8], [6 x i8]* @.str.false, i32 0, i32 0
-  %310 = select i1 %-1, i8* %308, i8* %309
-  %311 = getelementptr [3 x i8], [3 x i8]* @.str.fmt.str, i32 0, i32 0
-  %312 = call i32 (i8*, ...) @printf(i8* %311, i8* %310)
+  %303 = getelementptr [11 x i8], [11 x i8]* @.str.7, i32 0, i32 0
+  %304 = getelementptr [3 x i8], [3 x i8]* @.str.fmt.str, i32 0, i32 0
+  %305 = call i32 (i8*, ...) @printf(i8* %304, i8* %303)
+  %306 = load i32, i32* %26
+  %307 = load double, double* %28
+  %308 = fsub double 0.0, %307
+  %309 = sitofp i32 %306 to double
+  %310 = fmul double %309, %308
+  %311 = getelementptr [6 x i8], [6 x i8]* @.str.fmt.double, i32 0, i32 0
+  %312 = call i32 (i8*, ...) @printf(i8* %311, double %310)
   %313 = getelementptr [2 x i8], [2 x i8]* @.str.4, i32 0, i32 0
   %314 = getelementptr [3 x i8], [3 x i8]* @.str.fmt.str, i32 0, i32 0
   %315 = call i32 (i8*, ...) @printf(i8* %314, i8* %313)
-  %316 = alloca double
-  %317 = load i32, i32* @argc
-  %318 = sub i32 %317, 1
-  %319 = fadd double 1.100000e+00, 0.0
-  %320 = sitofp i32 %318 to double
-  %321 = fadd double %320, %319
-  %322 = add i32 3, 0
-  %323 = sitofp i32 %322 to double
-  %324 = call double @_Main_overload_double(double %323)
-  %325 = fadd double %321, %324
-  %326 = add i32 3, 0
-  %327 = add i32 3, 0
-  %328 = mul i32 %326, %327
-  %329 = sitofp i32 %328 to double
-  %330 = fadd double %325, %329
-  %331 = add i32 2, 0
-  %332 = sitofp i32 %331 to double
-  %333 = fadd double %330, %332
-  %334 = add i32 2, 0
+  %316 = add i1 0, 0
+  %317 = load i1, i1* %35
+  %318 = xor i1 %317, 1
+  %319 = xor i1 %316, %318
+  %320 = getelementptr [5 x i8], [5 x i8]* @.str.true, i32 0, i32 0
+  %321 = getelementptr [6 x i8], [6 x i8]* @.str.false, i32 0, i32 0
+  %322 = select i1 %319, i8* %320, i8* %321
+  %323 = getelementptr [3 x i8], [3 x i8]* @.str.fmt.str, i32 0, i32 0
+  %324 = call i32 (i8*, ...) @printf(i8* %323, i8* %322)
+  %325 = getelementptr [2 x i8], [2 x i8]* @.str.4, i32 0, i32 0
+  %326 = getelementptr [3 x i8], [3 x i8]* @.str.fmt.str, i32 0, i32 0
+  %327 = call i32 (i8*, ...) @printf(i8* %326, i8* %325)
+  %328 = alloca double
+  %329 = load i32, i32* @argc
+  %330 = sub i32 %329, 1
+  %331 = fadd double 1.100000e+00, 0.0
+  %332 = sitofp i32 %330 to double
+  %333 = fadd double %332, %331
+  %334 = add i32 3, 0
   %335 = sitofp i32 %334 to double
-  %336 = fadd double %333, %335
-  %337 = add i32 2, 0
-  %338 = sub i32 0, %337
-  %339 = sitofp i32 %338 to double
-  %340 = fadd double %336, %339
-  %341 = add i32 3, 0
-  %342 = add i32 3, 0
-  %343 = sdiv i32 %341, %342
+  %336 = call double @_Main_overload_double(double %335)
+  %337 = fadd double %333, %336
+  %338 = add i32 3, 0
+  %339 = add i32 3, 0
+  %340 = mul i32 %338, %339
+  %341 = sitofp i32 %340 to double
+  %342 = fadd double %337, %341
+  %343 = add i32 2, 0
   %344 = sitofp i32 %343 to double
-  %345 = fadd double %340, %344
-  store double %345, double* %316
-  %346 = alloca i32
-  %347 = add i32 0, 0
-  store i32 %347, i32* %346
-  %348 = alloca i32
-  %349 = add i32 0, 0
-  store i32 %349, i32* %348
-  %350 = getelementptr [14 x i8], [14 x i8]* @.str.8, i32 0, i32 0
-  %351 = getelementptr [3 x i8], [3 x i8]* @.str.fmt.str, i32 0, i32 0
-  %352 = call i32 (i8*, ...) @printf(i8* %351, i8* %350)
+  %345 = fadd double %342, %344
+  %346 = add i32 2, 0
+  %347 = sitofp i32 %346 to double
+  %348 = fadd double %345, %347
+  %349 = add i32 2, 0
+  %350 = sub i32 0, %349
+  %351 = sitofp i32 %350 to double
+  %352 = fadd double %348, %351
+  %353 = add i32 3, 0
+  %354 = add i32 3, 0
+  %355 = sdiv i32 %353, %354
+  %356 = sitofp i32 %355 to double
+  %357 = fadd double %352, %356
+  store double %357, double* %328
+  %358 = alloca i32
+  %359 = add i32 0, 0
+  store i32 %359, i32* %358
+  %360 = alloca i32
+  %361 = add i32 0, 0
+  store i32 %361, i32* %360
+  %362 = getelementptr [14 x i8], [14 x i8]* @.str.8, i32 0, i32 0
+  %363 = getelementptr [3 x i8], [3 x i8]* @.str.fmt.str, i32 0, i32 0
+  %364 = call i32 (i8*, ...) @printf(i8* %363, i8* %362)
   br label %L178
 L178:
-  %353 = load i32, i32* %346
-  %354 = add i32 10, 0
-  %355 = icmp slt i32 %353, %354
-  br i1 %355, label %L179, label %L180
+  %365 = load i32, i32* %358
+  %366 = add i32 10, 0
+  %367 = icmp slt i32 %365, %366
+  br i1 %367, label %L179, label %L180
 L179:
   br label %L181
 L181:
-  %356 = add i32 10, 0
-  %357 = load i32, i32* %346
-  %358 = icmp sgt i32 %356, %357
-  br i1 %358, label %L182, label %L183
+  %368 = add i32 10, 0
+  %369 = load i32, i32* %358
+  %370 = icmp sgt i32 %368, %369
+  br i1 %370, label %L182, label %L183
 L182:
   br label %L184
 L184:
-  %359 = add i32 20, 0
-  %360 = load i32, i32* %348
-  %361 = icmp sgt i32 %359, %360
+  %371 = add i32 20, 0
+  %372 = load i32, i32* %360
+  %373 = icmp sgt i32 %371, %372
   br label %L189
 L189:
-  br i1 %361, label %L187, label %L188
+  br i1 %373, label %L187, label %L188
 L187:
-  %362 = load i32, i32* %346
-  %363 = add i32 10, 0
-  %364 = icmp slt i32 %362, %363
+  %374 = load i32, i32* %358
+  %375 = add i32 10, 0
+  %376 = icmp slt i32 %374, %375
   br label %L190
 L190:
   br label %L188
 L188:
-  %365 = phi i1 [ %361, %L189 ], [ %364, %L190 ]
-  br i1 %365, label %L185, label %L186
+  %377 = phi i1 [ %373, %L189 ], [ %376, %L190 ]
+  br i1 %377, label %L185, label %L186
 L185:
-  %366 = load i32, i32* %346
-  %367 = add i32 1, 0
-  %368 = add i32 %366, %367
-  store i32 %368, i32* %346
-  %369 = load i32, i32* %348
-  %370 = add i32 1, 0
-  %371 = add i32 %369, %370
-  store i32 %371, i32* %348
-  %372 = load i32, i32* %346
-  %373 = add i32 10, 0
-  %374 = icmp eq i32 %372, %373
-  br i1 %374, label %L191, label %L192
+  %378 = load i32, i32* %358
+  %379 = add i32 1, 0
+  %380 = add i32 %378, %379
+  store i32 %380, i32* %358
+  %381 = load i32, i32* %360
+  %382 = add i32 1, 0
+  %383 = add i32 %381, %382
+  store i32 %383, i32* %360
+  %384 = load i32, i32* %358
+  %385 = add i32 10, 0
+  %386 = icmp eq i32 %384, %385
+  br i1 %386, label %L191, label %L192
 L191:
-  %375 = load i32, i32* %348
-  %376 = add i32 9, 0
-  %377 = icmp eq i32 %375, %376
-  br i1 %377, label %L194, label %L195
+  %387 = load i32, i32* %360
+  %388 = add i32 9, 0
+  %389 = icmp eq i32 %387, %388
+  br i1 %389, label %L194, label %L195
 L194:
   br label %L196
 L195:
