@@ -3,7 +3,7 @@
  *   Simão Tomás Botas Carvalho - 2021223055
  *   Teodoro Marques          - 2023211717
  *
- * Meta 3 -- Semantic Analysis (Phase 1: Symbol Table)
+ * Meta 3 -- Semantic Analysis
  */
 
 %locations
