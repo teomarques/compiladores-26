@@ -1,18 +1,25 @@
 CC = cc
 CFLAGS = -Wall -Wno-unused-function
+LEX = flex
+TARGET = jucompiler
 
-jucompiler: lex.yy.o
-	$(CC) -o jucompiler lex.yy.o $(CFLAGS) -lfl
+# Try to find .l file in current directory or src/
+SOURCE := $(wildcard jucompiler.l src/jucompiler.l)
+ifeq ($(SOURCE),)
+$(error Cannot find jucompiler.l in current directory or src/)
+endif
 
-lex.yy.c: src/jucompiler.l
-	lex src/jucompiler.l
+all: $(TARGET)
 
-lex.yy.o: lex.yy.c
-	$(CC) $(CFLAGS) -c lex.yy.c
+$(TARGET): lex.yy.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+lex.yy.c: $(SOURCE)
+	$(LEX) $<
 
 clean:
-	rm -f jucompiler lex.yy.* *.o
+	rm -f $(TARGET) lex.yy.c
 
-rebuild: clean jucompiler
+rebuild: clean all
 
-.PHONY: clean rebuild
+.PHONY: all clean rebuild
